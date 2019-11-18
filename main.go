@@ -7,6 +7,7 @@ import (
     "net/http"
     "net/http/httputil"
     "strconv"
+    "github.com/minio/minio-go/v6/pkg/s3signer"
 )
 
 var realUrl = "http://localhost:9000"
@@ -18,6 +19,11 @@ func main() {
     }
 }
 
+func resignHeader(r *http.Request) *http.Request {
+    r.Host = "localhost:9000"
+    return s3signer.SignV4(*r, "ElexirID", "987654321", "", "us-east-1")
+}
+
 func handler(w http.ResponseWriter, r *http.Request) {
     // Log request
     dump, err := httputil.DumpRequest(r, true)
@@ -27,6 +33,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
     if err := ioutil.WriteFile("_request.dump", dump, 0644); err != nil {
         fmt.Println(err)
     }
+
+    resignHeader(r)
 
     // Redirect request
     nr, err := http.NewRequest(r.Method, realUrl+r.URL.String(), r.Body)
