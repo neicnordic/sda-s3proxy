@@ -1,0 +1,14 @@
+[default]
+access_key=ElexirID
+secret_key=987654321
+#access_token=FooBar123
+check_ssl_certificate = False
+encoding = UTF-8
+encrypt = False
+guess_mime_type = True
+host_base = http://localhost:8000
+host_bucket = http://localhost:8000
+human_readable_sizes = true
+multipart_chunk_size_mb = 5
+use_https = false
+socket_timeout = 30
