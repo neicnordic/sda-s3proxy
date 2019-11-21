@@ -40,7 +40,16 @@ const (
 )
 
 func detectRequestType(r *http.Request) S3RequestType {
-    return Put
+    return List
+}
+
+// Don't know exactly how to do this yet
+func authenticateUser(r *http.Request) error {
+    return nil
+}
+
+func notAuthorized(w http.ResponseWriter, r *http.Request) {
+    w.WriteHeader(401) // Actually correct!
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +61,29 @@ func handler(w http.ResponseWriter, r *http.Request) {
     fmt.Fprintln(logHandle, "FORWARDING REQUEST TO BACKEND")
     fmt.Fprintln(logHandle, string(dump))
 
+    if err := authenticateUser(r); err != nil {
+        notAuthorized(w, r)
+        return
+    }
+
+    switch t := detectRequestType(r); t {
+    case MakeBucket, RemoveBucket, Delete, Get:
+        // Not allowed
+        notAllowedResponse(w, r)
+    case Put, List:
+        // Allowed
+        allowedResponse(w, r)
+    default:
+        fmt.Printf("Don't know how to handle %q\n", t)
+        notAllowedResponse(w, r)
+    }
+}
+
+func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
+    w.WriteHeader(403)
+}
+
+func allowedResponse(w http.ResponseWriter, r *http.Request) {
     resignHeader(r)
 
     // Redirect request
