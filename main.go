@@ -27,6 +27,22 @@ func resignHeader(r *http.Request) *http.Request {
     return s3signer.SignV4(*r, "ElexirID", "987654321", "", "us-east-1")
 }
 
+type S3RequestType int
+
+const (
+    MakeBucket S3RequestType = iota
+    RemoveBucket
+    List
+    Put
+    Get
+    Delete
+    // Fill in more if needed
+)
+
+func detectRequestType(r *http.Request) S3RequestType {
+    return Put
+}
+
 func handler(w http.ResponseWriter, r *http.Request) {
     // Log request
     dump, err := httputil.DumpRequest(r, true)
