@@ -6,6 +6,7 @@ import (
     "io/ioutil"
     "net/http"
     "net/http/httputil"
+    "strconv"
 )
 
 var realUrl = "http://localhost:9000"
@@ -33,6 +34,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
         fmt.Println(err)
     }
     nr.Header = r.Header
+    i, err := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
+    nr.ContentLength = i
     response, err := http.DefaultClient.Do(nr)
     if err != nil {
         fmt.Println(err)
@@ -45,6 +48,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
     }
     if err := ioutil.WriteFile("_response.dump", responseDump, 0644); err != nil {
         fmt.Println(err)
+    }
+
+    for header, values := range response.Header {
+        for _, value := range values {
+            w.Header().Add(header, value)
+        }
     }
 
     // Redirect answer
