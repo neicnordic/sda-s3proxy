@@ -33,6 +33,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         fmt.Println(err)
     }
+    fmt.Fprintln(logHandle, "FORWARDING REQUEST TO BACKEND")
     fmt.Fprintln(logHandle, string(dump))
 
     resignHeader(r)
@@ -55,6 +56,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         fmt.Println(err)
     }
+    fmt.Fprintln(logHandle, "FORWARDING RESPONSE TO CLIENT")
     fmt.Fprintln(logHandle, string(responseDump))
 
     for header, values := range response.Header {
