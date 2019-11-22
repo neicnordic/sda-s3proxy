@@ -3,16 +3,19 @@ package main
 import (
     "fmt"
     "io"
-    "io/ioutil"
     "net/http"
     "net/http/httputil"
+    "os"
     "strconv"
     "github.com/minio/minio-go/v6/pkg/s3signer"
 )
 
 var realUrl = "http://localhost:9000"
 
+var logHandle *os.File
+
 func main() {
+    logHandle, _ = os.Create("_requestLog.dump")
     http.HandleFunc("/", handler)
     if err := http.ListenAndServe(":8000", nil); err != nil {
         panic(err)
@@ -30,9 +33,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         fmt.Println(err)
     }
-    if err := ioutil.WriteFile("_request.dump", dump, 0644); err != nil {
-        fmt.Println(err)
-    }
+    fmt.Fprintln(logHandle, "FORWARDING REQUEST TO BACKEND")
+    fmt.Fprintln(logHandle, string(dump))
 
     resignHeader(r)
 
@@ -54,9 +56,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         fmt.Println(err)
     }
-    if err := ioutil.WriteFile("_response.dump", responseDump, 0644); err != nil {
-        fmt.Println(err)
-    }
+    fmt.Fprintln(logHandle, "FORWARDING RESPONSE TO CLIENT")
+    fmt.Fprintln(logHandle, string(responseDump))
 
     for header, values := range response.Header {
         for _, value := range values {
