@@ -8,6 +8,7 @@ import (
     "os"
     "strconv"
     "github.com/minio/minio-go/v6/pkg/s3signer"
+    "strings"
 )
 
 var realUrl = "http://localhost:9000"
@@ -37,11 +38,39 @@ const (
     Get
     Delete
     // Fill in more if needed
+    Policy
+    Other
 )
 
 func detectRequestType(r *http.Request) S3RequestType {
-    return List
-}
+    if r.Method == http.MethodGet {
+        // Case for listing all buckets
+        if strings.HasSuffix(r.URL.String(), "/") {
+            return Get
+        } else if strings.Contains(r.URL.String(), "?acl"){
+            return Policy
+        } else {
+            return List
+        }
+    } else if r.Method == http.MethodDelete {
+        if strings.HasSuffix(r.URL.String(), "/") {
+            return RemoveBucket
+        } else {
+            // Do we allow deletion of files?
+            return Delete
+        }
+    } else if r.Method == http.MethodPut {
+        if strings.HasSuffix(r.URL.String(), "/") {
+            return MakeBucket
+        } else if strings.Contains(r.URL.String(), "?policy") {
+            return Policy
+        } else {
+            // Should decide if we will handle copy here or through authentication
+            return Put
+        }
+    }
+    return Other
+} 
 
 // Don't know exactly how to do this yet
 func authenticateUser(r *http.Request) error {
@@ -65,12 +94,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
         notAuthorized(w, r)
         return
     }
-
     switch t := detectRequestType(r); t {
-    case MakeBucket, RemoveBucket, Delete, Get:
+    case MakeBucket, RemoveBucket, Delete, Get, Policy:
         // Not allowed
         notAllowedResponse(w, r)
-    case Put, List:
+    case Put, List, Other:
         // Allowed
         allowedResponse(w, r)
     default:
