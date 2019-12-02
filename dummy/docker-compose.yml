@@ -16,3 +16,17 @@ services:
       - "9000:9000"
     volumes:
       - "/tmp/data:/data"
+  mq_server:
+    container_name: mq
+    image: rabbitmq:3.7.8-management-alpine
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    volumes:
+      - ./defs.json:/etc/rabbitmq/defs.json
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "5672" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
