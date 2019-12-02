@@ -38,13 +38,14 @@ const (
     Get
     Delete
     // Fill in more if needed
+    AbortMultipart
     Policy
     Other
 )
 
 func detectRequestType(r *http.Request) S3RequestType {
-    if r.Method == http.MethodGet {
-        // Case for listing all buckets
+    switch r.Method {
+    case http.MethodGet:
         if strings.HasSuffix(r.URL.String(), "/") {
             return Get
         } else if strings.Contains(r.URL.String(), "?acl"){
@@ -52,14 +53,16 @@ func detectRequestType(r *http.Request) S3RequestType {
         } else {
             return List
         }
-    } else if r.Method == http.MethodDelete {
+    case http.MethodDelete:
         if strings.HasSuffix(r.URL.String(), "/") {
             return RemoveBucket
-        } else {
+        } else if strings.Contains(r.URL.String(), "uploadId") {
+            return AbortMultipart
+        }else {
             // Do we allow deletion of files?
             return Delete
         }
-    } else if r.Method == http.MethodPut {
+    case http.MethodPut:
         if strings.HasSuffix(r.URL.String(), "/") {
             return MakeBucket
         } else if strings.Contains(r.URL.String(), "?policy") {
@@ -95,10 +98,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
         return
     }
     switch t := detectRequestType(r); t {
-    case MakeBucket, RemoveBucket, Delete, Get, Policy:
+    case MakeBucket, RemoveBucket, Delete, Policy, Get:
         // Not allowed
         notAllowedResponse(w, r)
-    case Put, List, Other:
+    case Put, List, Other, AbortMultipart:
         // Allowed
         allowedResponse(w, r)
     default:
