@@ -8,6 +8,7 @@ import (
     "os"
     "strconv"
     "github.com/minio/minio-go/v6/pkg/s3signer"
+    "strings"
 
     "log"
     "github.com/NBISweden/S3-Upload-Proxy/mq"
@@ -40,6 +41,62 @@ func resignHeader(r *http.Request) *http.Request {
     return s3signer.SignV4(*r, "ElexirID", "987654321", "", "us-east-1")
 }
 
+type S3RequestType int
+
+const (
+    MakeBucket S3RequestType = iota
+    RemoveBucket
+    List
+    Put
+    Get
+    Delete
+    // Fill in more if needed
+    AbortMultipart
+    Policy
+    Other
+)
+
+func detectRequestType(r *http.Request) S3RequestType {
+    switch r.Method {
+    case http.MethodGet:
+        if strings.HasSuffix(r.URL.String(), "/") {
+            return Get
+        } else if strings.Contains(r.URL.String(), "?acl"){
+            return Policy
+        } else {
+            return List
+        }
+    case http.MethodDelete:
+        if strings.HasSuffix(r.URL.String(), "/") {
+            return RemoveBucket
+        } else if strings.Contains(r.URL.String(), "uploadId") {
+            return AbortMultipart
+        }else {
+            // Do we allow deletion of files?
+            return Delete
+        }
+    case http.MethodPut:
+        if strings.HasSuffix(r.URL.String(), "/") {
+            return MakeBucket
+        } else if strings.Contains(r.URL.String(), "?policy") {
+            return Policy
+        } else {
+            // Should decide if we will handle copy here or through authentication
+            return Put
+        }
+    }
+    return Other
+} 
+
+// Don't know exactly how to do this yet
+func authenticateUser(r *http.Request) error {
+    return nil
+}
+
+func notAuthorized(w http.ResponseWriter, r *http.Request) {
+    w.WriteHeader(401) // Actually correct!
+}
+
 func handler(w http.ResponseWriter, r *http.Request) {
     // Log request
     dump, err := httputil.DumpRequest(r, true)
@@ -49,10 +106,34 @@ func handler(w http.ResponseWriter, r *http.Request) {
     fmt.Fprintln(logHandle, "FORWARDING REQUEST TO BACKEND")
     fmt.Fprintln(logHandle, string(dump))
 
+    if err := authenticateUser(r); err != nil {
+        notAuthorized(w, r)
+        return
+    }
+    switch t := detectRequestType(r); t {
+    case MakeBucket, RemoveBucket, Delete, Policy, Get:
+        // Not allowed
+        notAllowedResponse(w, r)
+    case Put, List, Other, AbortMultipart:
+        // Allowed
+        allowedResponse(w, r)
+    default:
+        fmt.Printf("Don't know how to handle %q\n", t)
+        notAllowedResponse(w, r)
+    }
+}
+
+func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
+    w.WriteHeader(403)
+}
+
+func allowedResponse(w http.ResponseWriter, r *http.Request) {
+
     body = "FORWARDING REQUEST TO BACKEND\n" + string(dump)
     if err := mq.Publish(mqUri, exchangeName, exchangeType, routingKey, body, reliable); err != nil {
         log.Fatalf("%s", err)
     }
+
 
     resignHeader(r)
 
