@@ -3,7 +3,9 @@ RUN apk add --no-cache git
 COPY . .
 ENV GO111MODULE=on
 ENV GOPATH=$PWD
-RUN go build -o ./build/s3proxy main.go
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+RUN go build -ldflags "-extldflags -static" -o ./build/s3proxy main.go
 
 FROM scratch
 COPY --from=0 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
