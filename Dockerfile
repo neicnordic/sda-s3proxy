@@ -2,6 +2,7 @@ FROM golang:1.13.4-alpine3.10
 RUN apk add --no-cache git
 COPY . .
 ENV GO111MODULE=on
+ENV GOPATH=$PWD
 RUN go build -o ./build/s3proxy main.go
 
 FROM scratch
