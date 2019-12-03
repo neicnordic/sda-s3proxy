@@ -9,11 +9,24 @@ import (
     "strconv"
     "github.com/minio/minio-go/v6/pkg/s3signer"
     "strings"
+
+    "log"
+    "github.com/NBISweden/S3-Upload-Proxy/mq"
 )
 
 var realUrl = "http://localhost:9000"
 
 var logHandle *os.File
+
+
+var (
+    mqUri        = "amqp://test:test@localhost:5672/test" //"AMQP URI"
+    exchangeName = "localega.v1" //"Durable AMQP exchange name"
+    exchangeType = "topic" //"Exchange type - direct|fanout|topic|x-custom"
+    routingKey   = "files.inbox" //"AMQP routing key"
+    body         = "foobar" //"Body of message"
+    reliable     = true //"Wait for the publisher confirmation before exiting"
+)
 
 func main() {
     logHandle, _ = os.Create("_requestLog.dump")
@@ -115,6 +128,13 @@ func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
 }
 
 func allowedResponse(w http.ResponseWriter, r *http.Request) {
+
+    body = "FORWARDING REQUEST TO BACKEND\n" + string(dump)
+    if err := mq.Publish(mqUri, exchangeName, exchangeType, routingKey, body, reliable); err != nil {
+        log.Fatalf("%s", err)
+    }
+
+
     resignHeader(r)
 
     // Redirect request
@@ -137,6 +157,11 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
     }
     fmt.Fprintln(logHandle, "FORWARDING RESPONSE TO CLIENT")
     fmt.Fprintln(logHandle, string(responseDump))
+
+    body = "FORWARDING RESPONSE TO CLIENT\n" + string(responseDump)
+    if err := mq.Publish(mqUri, exchangeName, exchangeType, routingKey, body, reliable); err != nil {
+        log.Fatalf("%s", err)
+    }
 
     for header, values := range response.Header {
         for _, value := range values {
