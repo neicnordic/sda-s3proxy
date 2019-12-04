@@ -1,0 +1,14 @@
+aws:
+  url: "http://localhost:9000"
+  accessKey: "ElexirID"
+  secretKey: "987654321"
+
+broker:
+  host: "localhost"
+  port: "5672"
+  user: "test"
+  password: "test"
+  vhost: "/test"
+  exchange: "localega.v1"
+  routingKey: "files.inbox"
+  ssl: "false"
