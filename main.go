@@ -12,6 +12,7 @@ import (
 
     "log"
     "github.com/NBISweden/S3-Upload-Proxy/mq"
+    "encoding/json"
 )
 
 var realUrl = "http://localhost:9000"
@@ -27,6 +28,21 @@ var (
     body         = "foobar" //"Body of message"
     reliable     = true //"Wait for the publisher confirmation before exiting"
 )
+
+
+type Event struct {
+    Operation string `json:"operation"`
+    Username string `json:"username"`
+    Filepath string `json:"filepath"`
+    Filesize int64 `json:"filesize"`
+    Checksum Checksum `json:"checksum"`
+}
+
+type Checksum struct {
+    Type string `json:"type"`
+    Value string `json:"value"`
+}
+
 
 func main() {
     logHandle, _ = os.Create("_requestLog.dump")
@@ -129,12 +145,6 @@ func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
 
 func allowedResponse(w http.ResponseWriter, r *http.Request) {
 
-    body = "FORWARDING REQUEST TO BACKEND\n" + string(dump)
-    if err := mq.Publish(mqUri, exchangeName, exchangeType, routingKey, body, reliable); err != nil {
-        log.Fatalf("%s", err)
-    }
-
-
     resignHeader(r)
 
     // Redirect request
@@ -150,6 +160,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
         fmt.Println(err)
     }
 
+
     // Log answer
     responseDump, err := httputil.DumpResponse(response, true)
     if err != nil {
@@ -157,16 +168,44 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
     }
     fmt.Fprintln(logHandle, "FORWARDING RESPONSE TO CLIENT")
     fmt.Fprintln(logHandle, string(responseDump))
-
-    body = "FORWARDING RESPONSE TO CLIENT\n" + string(responseDump)
-    if err := mq.Publish(mqUri, exchangeName, exchangeType, routingKey, body, reliable); err != nil {
-        log.Fatalf("%s", err)
-    }
+    
 
     for header, values := range response.Header {
         for _, value := range values {
             w.Header().Add(header, value)
         }
+    }
+
+    // Send message to RabbitMQ if the upload is finished
+    // TODO: Use the actual username in both cases and size, checksum for multipart upload
+    if (nr.Method == http.MethodPut && response.StatusCode == 200 && !strings.Contains(nr.URL.String(), "partNumber")) ||
+        (nr.Method == http.MethodPost && response.StatusCode == 200 && strings.Contains(nr.URL.String(), "uploadId")) {
+        event := Event{}
+        checksum := Checksum{}
+        username := "username"
+        // Case for simple upload
+        if nr.Method == http.MethodPut {
+            event.Operation = "upload"
+            event.Filepath = username + "/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1:]
+            event.Filesize = i
+        // Case for multi-part upload
+        } else if nr.Method == http.MethodPost {
+            event.Operation = "multipart-upload"
+            event.Filepath = username + "/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1: strings.LastIndex(r.URL.String(), "?uploadId")]
+            event.Filesize = i
+        }
+        event.Username = username
+        checksum.Type = "sha256"
+        checksum.Value = r.Header.Get("x-amz-content-sha256")
+        event.Checksum = checksum
+        
+        body, err := json.Marshal(event)
+        if err!=nil {
+            log.Fatalf("%s", err)
+        }
+        if err := mq.Publish(mqUri, exchangeName, exchangeType, routingKey, string(body), reliable); err != nil {
+            log.Fatalf("%s", err)
+        }        
     }
 
     // Redirect answer
