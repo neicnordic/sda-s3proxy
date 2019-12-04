@@ -194,7 +194,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
             event.Filepath = username + "/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1: strings.LastIndex(r.URL.String(), "?uploadId")]
             event.Filesize = i
         }
-        event.Username = "Username"
+        event.Username = username
         checksum.Type = "sha256"
         checksum.Value = r.Header.Get("x-amz-content-sha256")
         event.Checksum = checksum
