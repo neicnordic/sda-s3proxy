@@ -175,22 +175,23 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
             w.Header().Add(header, value)
         }
     }
-    
+
     // Send message to RabbitMQ if the upload is finished
     // TODO: Use the actual username in both cases and size, checksum for multipart upload
     if (nr.Method == http.MethodPut && response.StatusCode == 200 && !strings.Contains(nr.URL.String(), "partNumber")) ||
         (nr.Method == http.MethodPost && response.StatusCode == 200 && strings.Contains(nr.URL.String(), "uploadId")) {
         event := Event{}
         checksum := Checksum{}
+        username := "username"
         // Case for simple upload
         if nr.Method == http.MethodPut {
             event.Operation = "upload"
-            event.Filepath = "username/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1:]
+            event.Filepath = username + "/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1:]
             event.Filesize = i
         // Case for multi-part upload
         } else if nr.Method == http.MethodPost {
             event.Operation = "multipart-upload"
-            event.Filepath = "username/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1: strings.LastIndex(r.URL.String(), "?uploadId")]
+            event.Filepath = username + "/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1: strings.LastIndex(r.URL.String(), "?uploadId")]
             event.Filesize = i
         }
         event.Username = "Username"
