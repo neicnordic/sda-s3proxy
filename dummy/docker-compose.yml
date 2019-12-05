@@ -41,6 +41,7 @@ services:
     depends_on:
       - mq_server
       - s3_backend
+    restart: always
     environment:
       - AWS_URL=http://s3:9000
       - AWS_ACCESSKEY=ElexirID
