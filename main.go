@@ -14,9 +14,11 @@ import (
     "github.com/NBISweden/S3-Upload-Proxy/mq"
     "encoding/json"
     "github.com/spf13/viper"
+    "github.com/streadway/amqp"
 )
 
 var logHandle *os.File
+var AmqpChannel *amqp.Channel
 var (
     confVars         = []string{
                         "aws.url", "aws.accessKey", "aws.secretKey", "broker.host","broker.port", "broker.user",
@@ -25,7 +27,6 @@ var (
     backedS3Url      = ""
     backedAccessKey  = ""
     backedSecretKey  = ""
-    brokerUri        = ""
     brokerHost       = ""
     brokerPort       = ""
     brokerUsername   = ""
@@ -82,8 +83,21 @@ func main() {
     brokerRoutingKey = viper.Get("broker.routingKey").(string)
     brokerSsl        = viper.Get("broker.ssl").(string)
 
-    if brokerUri == "" {
-        buildMqUri(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
+    brokerUri := buildMqUri(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
+
+    connection, err := mq.Dial(brokerUri)
+    if err != nil {
+        fmt.Errorf("BrokerErrMsg: %s", err)
+    }
+
+    AmqpChannel, err = mq.Channel(connection)
+    if err != nil {
+        fmt.Errorf("BrokerErrMsg: %s", err)
+    }
+
+    err = mq.Exchange(AmqpChannel, brokerExchange)
+    if err != nil {
+        fmt.Errorf("BrokerErrMsg: %s", err)
     }
 
     logHandle, _ = os.Create("_requestLog.dump")
@@ -91,14 +105,20 @@ func main() {
     if err := http.ListenAndServe(":8000", nil); err != nil {
         panic(err)
     }
+
+    defer AmqpChannel.Close()
+    defer connection.Close()
+
 }
 
-func buildMqUri(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) {
+func buildMqUri(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) string {
+    brokerUri := ""
     if ssl == "true" {
         brokerUri = "amqps://"+mqUser+":"+mqPassword+"@"+mqHost+":"+mqPort+mqVhost
     } else {
         brokerUri = "amqp://"+mqUser+":"+mqPassword+"@"+mqHost+":"+mqPort+mqVhost
     }
+    return brokerUri
 }
 
 func resignHeader(r *http.Request) *http.Request {
@@ -252,7 +272,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
         if err!=nil {
             log.Fatalf("%s", err)
         }
-        if err := mq.Publish(brokerUri, brokerExchange, "topic", brokerRoutingKey, string(body), true); err != nil {
+        if err := mq.Publish(brokerExchange, brokerRoutingKey, string(body), true, AmqpChannel); err != nil {
             log.Fatalf("%s", err)
         }        
     }
