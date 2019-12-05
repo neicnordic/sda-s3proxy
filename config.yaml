@@ -5,10 +5,13 @@ aws:
 
 broker:
   host: "localhost"
-  port: "5672"
+  port: "5671"
   user: "test"
   password: "test"
   vhost: "/test"
   exchange: "localega.v1"
   routingKey: "files.inbox"
-  ssl: "false"
+  ssl: "true"
+  cacert: "./dummy/certs/ca.crt"
+  clientcert: "./dummy/certs/client.crt"
+  clientkey: "./dummy/certs/client.key"
