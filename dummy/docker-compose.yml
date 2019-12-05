@@ -22,9 +22,13 @@ services:
     ports:
       - "15672:15672"
       - "5672:5672"
+      - "5671:5671"
     volumes:
       - ./defs.json:/etc/rabbitmq/defs.json
       - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./certs/ca.crt:/etc/rabbitmq/ssl/ca.crt
+      - ./certs/mq.crt:/etc/rabbitmq/ssl/mq.crt
+      - ./certs/mq.key:/etc/rabbitmq/ssl/mq.key
     healthcheck:
       test: [ "CMD", "nc", "-z", "localhost", "5672" ]
       interval: 30s
@@ -44,10 +48,17 @@ services:
       - BROKER_HOST=mq
       - BROKER_USER=test
       - BROKER_PASSWORD=test
-      - BROKER_PORT=5672
+      - BROKER_PORT=5671
       - BROKER_VHOST=/test
       - BROKER_EXCHANGE=localega.v1
       - BROKER_ROUTINGKEY=files.inbox
-      - BROKER_SSL=false
+      - BROKER_SSL=true
+      - BROKER_CACERT=/certs/ca.crt
+      - BROKER_CLIENTCERT=/certs/client.crt
+      - BROKER_CLIENTKEY=/certs/client.key
+    volumes:
+      - ./certs/ca.crt:/certs/ca.crt
+      - ./certs/client.crt:/certs/client.crt
+      - ./certs/client.key:/certs/client.key
     ports:
       - "8000:8000"
