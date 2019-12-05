@@ -15,10 +15,15 @@ import (
     "encoding/json"
     "github.com/spf13/viper"
     "github.com/streadway/amqp"
+
+    "crypto/tls"
+    "crypto/x509"
+    "io/ioutil"
 )
 
 var logHandle *os.File
 var AmqpChannel *amqp.Channel
+var err error
 var (
     confVars         = []string{
                         "aws.url", "aws.accessKey", "aws.secretKey", "broker.host","broker.port", "broker.user",
@@ -66,6 +71,11 @@ func main() {
                     panic(fmt.Errorf("%s not set", s))
                 }
             }
+            if viper.Get("broker.ssl") == "true" {
+                if viper.Get("broker.caCert") == nil {
+                    panic(fmt.Errorf("broker.caCert not set"))
+                }
+            }
         } else {
             panic(fmt.Errorf("Fatal error config file: %s \n", err))
         }
@@ -85,19 +95,44 @@ func main() {
 
     brokerUri := buildMqUri(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
 
-    connection, err := mq.Dial(brokerUri)
-    if err != nil {
-        fmt.Errorf("BrokerErrMsg: %s", err)
+    var connection *amqp.Connection
+
+    if brokerSsl == "true" {
+        cfg := new(tls.Config)
+
+        cfg.RootCAs = x509.NewCertPool()
+
+        cacert := viper.Get("broker.caCert").(string)
+        if ca, err := ioutil.ReadFile(cacert); err == nil {
+            cfg.RootCAs.AppendCertsFromPEM(ca)
+        }
+
+        cert := viper.Get("broker.clientCert")
+        key := viper.Get("broker.clientKey")
+        if (cert != nil && key != nil) {
+            if cert, err := tls.LoadX509KeyPair(cert.(string), key.(string)); err == nil {
+                cfg.Certificates = append(cfg.Certificates, cert)
+            }
+        }
+        connection, err = mq.DialTLS(brokerUri, cfg)
+        if err != nil {
+            panic(fmt.Errorf("BrokerErrMsg: %s", err))
+        }
+    } else {
+        connection, err = mq.Dial(brokerUri)
+        if err != nil {
+            panic(fmt.Errorf("BrokerErrMsg: %s", err))
+        }
     }
 
     AmqpChannel, err = mq.Channel(connection)
     if err != nil {
-        fmt.Errorf("BrokerErrMsg: %s", err)
+        panic(fmt.Errorf("BrokerErrMsg: %s", err))
     }
 
     err = mq.Exchange(AmqpChannel, brokerExchange)
     if err != nil {
-        fmt.Errorf("BrokerErrMsg: %s", err)
+        panic(fmt.Errorf("BrokerErrMsg: %s", err))
     }
 
     logHandle, _ = os.Create("_requestLog.dump")

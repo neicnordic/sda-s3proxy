@@ -3,9 +3,20 @@ package mq
 import (
     "fmt"
     "log"
+    "crypto/tls"
 
     "github.com/streadway/amqp"
 )
+
+func DialTLS(amqpURI string, cfg *tls.Config) (*amqp.Connection, error) {
+    connection, err := amqp.DialTLS(amqpURI, cfg)
+    if err != nil {
+        return nil, fmt.Errorf("Dial: %s", err)
+    }
+    log.Printf("conn: %v, err: %v", connection, err)
+
+    return connection, nil
+}
 
 func Dial(amqpURI string) (*amqp.Connection, error) {
     connection, err := amqp.Dial(amqpURI)
