@@ -30,3 +30,24 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+  s3_proxy:
+    build: ../
+    image: nbisweden/s3inbox
+    container_name: proxy
+    depends_on:
+      - mq_server
+      - s3_backend
+    environment:
+      - AWS_URL=http://s3:9000
+      - AWS_ACCESSKEY=ElexirID
+      - AWS_SECRETKEY=987654321
+      - BROKER_HOST=mq
+      - BROKER_USER=test
+      - BROKER_PASSWORD=test
+      - BROKER_PORT=5672
+      - BROKER_VHOST=/test
+      - BROKER_EXCHANGE=localega.v1
+      - BROKER_ROUTINGKEY=files.inbox
+      - BROKER_SSL=false
+    ports:
+      - "8000:8000"

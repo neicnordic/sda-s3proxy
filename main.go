@@ -13,20 +13,27 @@ import (
     "log"
     "github.com/NBISweden/S3-Upload-Proxy/mq"
     "encoding/json"
+    "github.com/spf13/viper"
 )
 
-var realUrl = "http://localhost:9000"
-
 var logHandle *os.File
-
-
 var (
-    mqUri        = "amqp://test:test@localhost:5672/test" //"AMQP URI"
-    exchangeName = "localega.v1" //"Durable AMQP exchange name"
-    exchangeType = "topic" //"Exchange type - direct|fanout|topic|x-custom"
-    routingKey   = "files.inbox" //"AMQP routing key"
-    body         = "foobar" //"Body of message"
-    reliable     = true //"Wait for the publisher confirmation before exiting"
+    confVars         = []string{
+                        "aws.url", "aws.accessKey", "aws.secretKey", "broker.host","broker.port", "broker.user",
+                        "broker.password", "broker.vhost","broker.exchange", "broker.routingKey", "broker.ssl",
+                        }
+    backedS3Url      = ""
+    backedAccessKey  = ""
+    backedSecretKey  = ""
+    brokerUri        = ""
+    brokerHost       = ""
+    brokerPort       = ""
+    brokerUsername   = ""
+    brokerPassword   = ""
+    brokerVhost      = ""
+    brokerExchange   = ""
+    brokerSsl        = ""
+    brokerRoutingKey = ""
 )
 
 
@@ -45,6 +52,40 @@ type Checksum struct {
 
 
 func main() {
+    viper.SetConfigName("config")
+    viper.AddConfigPath(".")
+    viper.AutomaticEnv()
+    viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+    viper.SetConfigType("yaml")
+    if err := viper.ReadInConfig(); err != nil {
+        if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+            // Config file not found; ignore error if desired
+            for _, s := range confVars {
+                if viper.Get(s) == nil {
+                    panic(fmt.Errorf("%s not set", s))
+                }
+            }
+        } else {
+            panic(fmt.Errorf("Fatal error config file: %s \n", err))
+        }
+    }
+
+    backedS3Url      = viper.Get("aws.url").(string)
+    backedAccessKey  = viper.Get("aws.accessKey").(string)
+    backedSecretKey  = viper.Get("aws.secretKey").(string)
+    brokerHost       = viper.Get("broker.host").(string)
+    brokerPort       = viper.Get("broker.port").(string)
+    brokerUsername   = viper.Get("broker.user").(string)
+    brokerPassword   = viper.Get("broker.password").(string)
+    brokerVhost      = viper.Get("broker.vhost").(string)
+    brokerExchange   = viper.Get("broker.exchange").(string)
+    brokerRoutingKey = viper.Get("broker.routingKey").(string)
+    brokerSsl        = viper.Get("broker.ssl").(string)
+
+    if brokerUri == "" {
+        buildMqUri(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
+    }
+
     logHandle, _ = os.Create("_requestLog.dump")
     http.HandleFunc("/", handler)
     if err := http.ListenAndServe(":8000", nil); err != nil {
@@ -52,9 +93,18 @@ func main() {
     }
 }
 
+func buildMqUri(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) {
+    if ssl == "true" {
+        brokerUri = "amqps://"+mqUser+":"+mqPassword+"@"+mqHost+":"+mqPort+mqVhost
+    } else {
+        brokerUri = "amqp://"+mqUser+":"+mqPassword+"@"+mqHost+":"+mqPort+mqVhost
+    }
+}
+
 func resignHeader(r *http.Request) *http.Request {
-    r.Host = "localhost:9000"
-    return s3signer.SignV4(*r, "ElexirID", "987654321", "", "us-east-1")
+    host := strings.SplitN(backedS3Url, "//", 2)
+    r.Host = host[1]
+    return s3signer.SignV4(*r, backedAccessKey, backedSecretKey, "", "us-east-1")
 }
 
 type S3RequestType int
@@ -148,7 +198,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
     resignHeader(r)
 
     // Redirect request
-    nr, err := http.NewRequest(r.Method, realUrl+r.URL.String(), r.Body)
+    nr, err := http.NewRequest(r.Method, backedS3Url+r.URL.String(), r.Body)
     if err != nil {
         fmt.Println(err)
     }
@@ -169,7 +219,6 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
     fmt.Fprintln(logHandle, "FORWARDING RESPONSE TO CLIENT")
     fmt.Fprintln(logHandle, string(responseDump))
     
-
     for header, values := range response.Header {
         for _, value := range values {
             w.Header().Add(header, value)
@@ -203,7 +252,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
         if err!=nil {
             log.Fatalf("%s", err)
         }
-        if err := mq.Publish(mqUri, exchangeName, exchangeType, routingKey, string(body), reliable); err != nil {
+        if err := mq.Publish(brokerUri, brokerExchange, "topic", brokerRoutingKey, string(body), true); err != nil {
             log.Fatalf("%s", err)
         }        
     }
