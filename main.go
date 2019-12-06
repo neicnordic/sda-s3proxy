@@ -56,6 +56,7 @@ type Checksum struct {
     Value string `json:"value"`
 }
 
+var username string
 
 func main() {
     viper.SetConfigName("config")
@@ -249,7 +250,13 @@ func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
 }
 
 func allowedResponse(w http.ResponseWriter, r *http.Request) {
-
+    username = "username"
+    if r.Method == http.MethodGet && (strings.Contains(r.URL.String(), "?delimiter")) {
+        r.URL.RawQuery = r.URL.RawQuery+"&prefix="+username+"%2F"
+    } else if r.Method == http.MethodPost || r.Method == http.MethodPut {
+        splitURL := strings.SplitN(r.URL.Path, "/", 3)
+        r.URL.Path = "/"+splitURL[1]+"/"+username+"/"+splitURL[2]  
+    }
     resignHeader(r)
 
     // Redirect request
@@ -286,7 +293,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
         (nr.Method == http.MethodPost && response.StatusCode == 200 && strings.Contains(nr.URL.String(), "uploadId")) {
         event := Event{}
         checksum := Checksum{}
-        username := "username"
+
         // Case for simple upload
         if nr.Method == http.MethodPut {
             event.Operation = "upload"
