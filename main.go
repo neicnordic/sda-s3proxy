@@ -15,10 +15,11 @@ import (
     "encoding/json"
     "github.com/spf13/viper"
     "github.com/streadway/amqp"
-
     "crypto/tls"
     "crypto/x509"
     "io/ioutil"
+    "regexp"
+
 )
 
 var logHandle *os.File
@@ -56,6 +57,7 @@ type Checksum struct {
     Value string `json:"value"`
 }
 
+var username string
 
 func main() {
     viper.SetConfigName("config")
@@ -249,7 +251,22 @@ func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
 }
 
 func allowedResponse(w http.ResponseWriter, r *http.Request) {
-
+    bucket := "test"
+    re := regexp.MustCompile("/([^/]+)/")
+    username = re.FindStringSubmatch(r.URL.Path)[1]
+    if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?delimiter") {
+        r.URL.Path = "/"+bucket+"/"
+        if strings.Contains(r.URL.RawQuery, "&prefix") {
+            params := strings.Split(r.URL.RawQuery, "&prefix=")
+            r.URL.RawQuery = params[0]+"&prefix="+username+"%2F"+params[1]
+        } else {
+            r.URL.RawQuery = r.URL.RawQuery+"&prefix="+username+"%2F"
+        }
+    } else if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?location") {
+        r.URL.Path = "/"+bucket+"/"
+    } else if r.Method == http.MethodPost || r.Method == http.MethodPut {
+        r.URL.Path = "/"+bucket+r.URL.Path
+    }
     resignHeader(r)
 
     // Redirect request
@@ -258,8 +275,8 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
         fmt.Println(err)
     }
     nr.Header = r.Header
-    i, err := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
-    nr.ContentLength = i
+    contentLength, err := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
+    nr.ContentLength = contentLength
     response, err := http.DefaultClient.Do(nr)
     if err != nil {
         fmt.Println(err)
@@ -286,17 +303,17 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
         (nr.Method == http.MethodPost && response.StatusCode == 200 && strings.Contains(nr.URL.String(), "uploadId")) {
         event := Event{}
         checksum := Checksum{}
-        username := "username"
+
         // Case for simple upload
         if nr.Method == http.MethodPut {
             event.Operation = "upload"
-            event.Filepath = username + "/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1:]
-            event.Filesize = i
+            event.Filepath = r.URL.Path
+            event.Filesize = contentLength
         // Case for multi-part upload
         } else if nr.Method == http.MethodPost {
             event.Operation = "multipart-upload"
-            event.Filepath = username + "/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1: strings.LastIndex(r.URL.String(), "?uploadId")]
-            event.Filesize = i
+            event.Filepath = r.URL.Path
+            event.Filesize = contentLength
         }
         event.Username = username
         checksum.Type = "sha256"
