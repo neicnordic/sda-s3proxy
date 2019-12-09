@@ -15,3 +15,7 @@ broker:
   cacert: "./dummy/certs/ca.crt"
   clientcert: "./dummy/certs/client.crt"
   clientkey: "./dummy/certs/client.key"
+
+server:
+  cert: "./dummy/certs/proxy.crt"
+  key: "./dummy/certs/proxy.key"
