@@ -15,10 +15,11 @@ import (
     "encoding/json"
     "github.com/spf13/viper"
     "github.com/streadway/amqp"
-
     "crypto/tls"
     "crypto/x509"
     "io/ioutil"
+    "regexp"
+
 )
 
 var logHandle *os.File
@@ -250,8 +251,9 @@ func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
 }
 
 func allowedResponse(w http.ResponseWriter, r *http.Request) {
-    username = "username"
     bucket := "test"
+    re := regexp.MustCompile("/([^/]+)/")
+    username = re.FindStringSubmatch(r.URL.Path)[1]
     if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?delimiter") {
         r.URL.Path = "/"+bucket+"/"
         if strings.Contains(r.URL.RawQuery, "&prefix") {
