@@ -136,9 +136,17 @@ func main() {
     }
 
     logHandle, _ = os.Create("_requestLog.dump")
+
     http.HandleFunc("/", handler)
-    if err := http.ListenAndServe(":8000", nil); err != nil {
-        panic(err)
+
+    if (viper.Get("server.Cert") != nil && viper.Get("server.Key") != nil && viper.Get("server.Cert").(string) != "" && viper.Get("server.Key").(string) != ""){
+        if err := http.ListenAndServeTLS(":8000", viper.Get("server.Cert").(string), viper.Get("server.Key").(string), nil); err != nil {
+            panic(err)
+        }
+    } else {
+        if err := http.ListenAndServe( ":8000", nil); err != nil {
+            panic(err)
+        }
     }
 
     defer AmqpChannel.Close()
