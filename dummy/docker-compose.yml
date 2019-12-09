@@ -57,9 +57,13 @@ services:
       - BROKER_CACERT=/certs/ca.crt
       - BROKER_CLIENTCERT=/certs/client.crt
       - BROKER_CLIENTKEY=/certs/client.key
+      - SERVER_CERT=/certs/proxy.crt
+      - SERVER_KEY=/certs/proxy.key
     volumes:
       - ./certs/ca.crt:/certs/ca.crt
       - ./certs/client.crt:/certs/client.crt
       - ./certs/client.key:/certs/client.key
+      - ./certs/proxy.crt:/certs/proxy.crt
+      - ./certs/proxy.key:/certs/proxy.key
     ports:
       - "8000:8000"
