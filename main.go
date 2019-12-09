@@ -305,12 +305,12 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
         // Case for simple upload
         if nr.Method == http.MethodPut {
             event.Operation = "upload"
-            event.Filepath = username + "/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1:]
+            event.Filepath = r.URL.Path
             event.Filesize = contentLength
         // Case for multi-part upload
         } else if nr.Method == http.MethodPost {
             event.Operation = "multipart-upload"
-            event.Filepath = username + "/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1: strings.LastIndex(r.URL.String(), "?uploadId")]
+            event.Filepath = r.URL.Path
             event.Filesize = contentLength
         }
         event.Username = username
