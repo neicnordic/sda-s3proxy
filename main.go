@@ -251,11 +251,19 @@ func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
 
 func allowedResponse(w http.ResponseWriter, r *http.Request) {
     username = "username"
-    if r.Method == http.MethodGet && (strings.Contains(r.URL.String(), "?delimiter")) {
-        r.URL.RawQuery = r.URL.RawQuery+"&prefix="+username+"%2F"
+    bucket := "test"
+    if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?delimiter") {
+        r.URL.Path = "/"+bucket+"/"
+        if strings.Contains(r.URL.RawQuery, "&prefix") {
+            params := strings.Split(r.URL.RawQuery, "&prefix=")
+            r.URL.RawQuery = params[0]+"&prefix="+username+"%2F"+params[1]
+        } else {
+            r.URL.RawQuery = r.URL.RawQuery+"&prefix="+username+"%2F"
+        }
+    } else if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?location") {
+        r.URL.Path = "/"+bucket+"/"
     } else if r.Method == http.MethodPost || r.Method == http.MethodPut {
-        splitURL := strings.SplitN(r.URL.Path, "/", 3)
-        r.URL.Path = "/"+splitURL[1]+"/"+username+"/"+splitURL[2]  
+        r.URL.Path = "/"+bucket+r.URL.Path
     }
     resignHeader(r)
 
