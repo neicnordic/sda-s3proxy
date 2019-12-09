@@ -273,8 +273,8 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
         fmt.Println(err)
     }
     nr.Header = r.Header
-    i, err := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
-    nr.ContentLength = i
+    contentLength, err := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
+    nr.ContentLength = contentLength
     response, err := http.DefaultClient.Do(nr)
     if err != nil {
         fmt.Println(err)
@@ -306,12 +306,12 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
         if nr.Method == http.MethodPut {
             event.Operation = "upload"
             event.Filepath = username + "/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1:]
-            event.Filesize = i
+            event.Filesize = contentLength
         // Case for multi-part upload
         } else if nr.Method == http.MethodPost {
             event.Operation = "multipart-upload"
             event.Filepath = username + "/" + r.URL.String()[strings.LastIndex(r.URL.String(), "/") + 1: strings.LastIndex(r.URL.String(), "?uploadId")]
-            event.Filesize = i
+            event.Filesize = contentLength
         }
         event.Username = username
         checksum.Type = "sha256"
