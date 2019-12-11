@@ -167,20 +167,16 @@ func readUsersFile() map[string]string {
         panic(fmt.Errorf("UsersFileErrMsg: %s", err))
     }
 
-    // Create a new reader.
     r := csv.NewReader(bufio.NewReader(f))
     for {
         record, err := r.Read()
-        // Stop at EOF.
         if err == io.EOF {
             break
         }
-        //tmp := strings.Split(record, ",")
         users[record[0]] = record[1]
     }
     return users
 }
-
 
 func buildMqUri(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) string {
     brokerUri := ""
@@ -257,11 +253,12 @@ func extractSignature(r *http.Request) string {
 }
 
 
-// Don't know exactly how to do this yet
+// Function authenticating the user against stored credentials
+// 1) Extracts the username and retrieve the key from the map
+// 2) Sign the request with the new credentials
+// 3) Compare the signatures between the requests and return authentication status
 func authenticateUser(r *http.Request) error {
-    // Extract the username and retrieve the key from the map
-    // Sign the request with the new credentials
-    // Compare the signatures between the requests
+    
     re := regexp.MustCompile("Credential=([^/]+)/")
     curAccessKey := re.FindStringSubmatch(r.Header.Get("Authorization"))[1]
     signature := extractSignature(r)
@@ -275,39 +272,20 @@ func authenticateUser(r *http.Request) error {
         nr.Header.Set("X-Amz-Content-Sha256", r.Header.Get("X-Amz-Content-Sha256"))
         nr.Host = r.Host
         nr.URL.RawQuery = r.URL.RawQuery
-        dump, err := httputil.DumpRequest(nr, true)
-        if err != nil {
-            fmt.Println(err)
-        }
-        fmt.Fprintln(logHandle, "\nCREATING REQUEST FOR SIGNATURE")
-        fmt.Fprintln(logHandle, string(dump))
         resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
         curSignature := extractSignature(nr)
-
-
-        dump, err = httputil.DumpRequest(nr, true)
-        if err != nil {
-            fmt.Println(err)
-        }
-        fmt.Fprintln(logHandle, "\nAFTER REQUEST IS SIGNED")
-        fmt.Fprintln(logHandle, string(dump))
-
-        resignHeader(nr, curAccessKey, curSecretKey, r.Host)
         
-        if curSignature == signature {
-            // TODO: Return user authenticated
-            return nil
-        } else {
+        if curSignature != signature {
             // TODO: Return user not authenticated
-            return nil
+            err = fmt.Errorf("User signature not authenticated")
+            return err
         }
     } else {
         // TODO: Return user doesn't exist
-        return nil
+        err = fmt.Errorf("User not existing")
+        return err
     }
     
-
-
     return nil
 }
 
