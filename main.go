@@ -258,36 +258,35 @@ func extractSignature(r *http.Request) string {
 // 2) Sign the request with the new credentials
 // 3) Compare the signatures between the requests and return authentication status
 func authenticateUser(r *http.Request) error {
-    
-    re := regexp.MustCompile("Credential=([^/]+)/")
-    curAccessKey := re.FindStringSubmatch(r.Header.Get("Authorization"))[1]
-    signature := extractSignature(r)
+    if strings.Contains(r.URL.String(), "?location") {
+        re := regexp.MustCompile("Credential=([^/]+)/")
+        curAccessKey := re.FindStringSubmatch(r.Header.Get("Authorization"))[1]
+        signature := extractSignature(r)
 
-    if curSecretKey, ok := usersMap[curAccessKey]; ok {
-        // Create signing request
-        nr, err := http.NewRequest(r.Method, r.URL.String(), r.Body)
-        if err != nil {
-            fmt.Println(err)
-        }
-        // Add required headers
-        nr.Header.Set("X-Amz-Date", r.Header.Get("X-Amz-Date"))
-        nr.Header.Set("X-Amz-Content-Sha256", r.Header.Get("X-Amz-Content-Sha256"))
-        nr.Host = r.Host
-        nr.URL.RawQuery = r.URL.RawQuery
-        // Sing the new request
-        resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
-        curSignature := extractSignature(nr)
-        
-        // Compare signatures
-        if curSignature != signature {
-            err = fmt.Errorf("User signature not authenticated")
+        if curSecretKey, ok := usersMap[curAccessKey]; ok {
+            // Create signing request
+            nr, err := http.NewRequest(r.Method, r.URL.String(), r.Body)
+            if err != nil {
+                fmt.Println(err)
+            }
+            // Add required headers
+            nr.Header.Set("X-Amz-Date", r.Header.Get("X-Amz-Date"))
+            nr.Header.Set("X-Amz-Content-Sha256", r.Header.Get("X-Amz-Content-Sha256"))
+            nr.Host = r.Host
+            nr.URL.RawQuery = r.URL.RawQuery
+            // Sing the new request
+            resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
+            curSignature := extractSignature(nr)
+            // Compare signatures
+            if curSignature != signature {
+                err = fmt.Errorf("User signature not authenticated")
+                return err
+            }
+        } else {
+            err = fmt.Errorf("User not existing")
             return err
         }
-    } else {
-        err = fmt.Errorf("User not existing")
-        return err
     }
-
     return nil
 }
 
