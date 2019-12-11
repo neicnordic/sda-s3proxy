@@ -19,6 +19,8 @@ import (
     "crypto/x509"
     "io/ioutil"
     "regexp"
+    "encoding/csv"
+    "bufio"
 
 )
 
@@ -58,6 +60,7 @@ type Checksum struct {
 }
 
 var username string
+var usersMap map[string]string
 
 func main() {
     viper.SetConfigName("config")
@@ -139,6 +142,9 @@ func main() {
 
     logHandle, _ = os.Create("_requestLog.dump")
 
+    usersMap = readUsersFile()
+    fmt.Println(usersMap)
+
     http.HandleFunc("/", handler)
 
     if (viper.Get("server.Cert") != nil && viper.Get("server.Key") != nil && viper.Get("server.Cert").(string) != "" && viper.Get("server.Key").(string) != ""){
@@ -155,6 +161,28 @@ func main() {
     defer connection.Close()
 
 }
+
+func readUsersFile() map[string]string {
+    users := make(map[string]string)
+    f, err := os.Open("users.csv")
+    if err!=nil {
+        panic(fmt.Errorf("UsersFileErrMsg: %s", err))
+    }
+
+    // Create a new reader.
+    r := csv.NewReader(bufio.NewReader(f))
+    for {
+        record, err := r.Read()
+        // Stop at EOF.
+        if err == io.EOF {
+            break
+        }
+        //tmp := strings.Split(record, ",")
+        users[record[0]] = record[1]
+    }
+    return users
+}
+
 
 func buildMqUri(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) string {
     brokerUri := ""
