@@ -244,6 +244,7 @@ func detectRequestType(r *http.Request) S3RequestType {
     return Other
 } 
 
+// Extracts the signature from the authorization header
 func extractSignature(r *http.Request) string {
     
     re := regexp.MustCompile("Signature=(.*)")
@@ -252,8 +253,7 @@ func extractSignature(r *http.Request) string {
     return signature
 }
 
-
-// Function authenticating the user against stored credentials
+// Authenticates the user against stored credentials
 // 1) Extracts the username and retrieve the key from the map
 // 2) Sign the request with the new credentials
 // 3) Compare the signatures between the requests and return authentication status
@@ -264,28 +264,30 @@ func authenticateUser(r *http.Request) error {
     signature := extractSignature(r)
 
     if curSecretKey, ok := usersMap[curAccessKey]; ok {
+        // Create signing request
         nr, err := http.NewRequest(r.Method, r.URL.String(), r.Body)
         if err != nil {
             fmt.Println(err)
         }
+        // Add required headers
         nr.Header.Set("X-Amz-Date", r.Header.Get("X-Amz-Date"))
         nr.Header.Set("X-Amz-Content-Sha256", r.Header.Get("X-Amz-Content-Sha256"))
         nr.Host = r.Host
         nr.URL.RawQuery = r.URL.RawQuery
+        // Sing the new request
         resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
         curSignature := extractSignature(nr)
         
+        // Compare signatures
         if curSignature != signature {
-            // TODO: Return user not authenticated
             err = fmt.Errorf("User signature not authenticated")
             return err
         }
     } else {
-        // TODO: Return user doesn't exist
         err = fmt.Errorf("User not existing")
         return err
     }
-    
+
     return nil
 }
 
@@ -354,7 +356,6 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         fmt.Println(err)
     }
-
 
     // Log answer
     responseDump, err := httputil.DumpResponse(response, true)
