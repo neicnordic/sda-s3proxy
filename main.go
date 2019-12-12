@@ -114,24 +114,38 @@ func main() {
         // Enforce TLS1.2 or higher 
         cfg.MinVersion = 2
 
-        cfg.RootCAs = x509.NewCertPool()
+        cfg.RootCAs = SystemCAs
 
         if viper.Get("broker.serverName") != nil {
             cfg.ServerName = viper.Get("broker.serverName").(string)
         }
 
-        cacert := viper.Get("broker.caCert").(string)
-        if ca, err := ioutil.ReadFile(cacert); err == nil {
-            cfg.RootCAs.AppendCertsFromPEM(ca)
-        }
-
-        cert := viper.Get("broker.clientCert")
-        key := viper.Get("broker.clientKey")
-        if (cert != nil && key != nil) {
-            if cert, err := tls.LoadX509KeyPair(cert.(string), key.(string)); err == nil {
-                cfg.Certificates = append(cfg.Certificates, cert)
+        if viper.Get("broker.caCert") != nil {
+            cacert, err := ioutil.ReadFile(viper.Get("broker.cacert").(string))
+            if err != nil {
+                log.Fatalf("Failed to append %q to RootCAs: %v", cacert, err)
+            }
+            if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
+                log.Println("No certs appended, using system certs only")
             }
         }
+
+        if viper.Get("broker.verifyPeer").(string) == "true" {
+            if (viper.Get("broker.clientCert") != nil && viper.Get("broker.clientKey") != nil) {
+                cert, err := ioutil.ReadFile(viper.Get("broker.clientCert").(string))
+                if err != nil {
+                    log.Fatalf("Failed to append %q to RootCAs: %v", cert, err)
+                }
+                key, err := ioutil.ReadFile(viper.Get("broker.clientKey").(string))
+                if err != nil {
+                    log.Fatalf("Failed to append %q to RootCAs: %v", key, err)
+                }
+                if certs, err := tls.X509KeyPair(cert, key); err == nil {
+                    cfg.Certificates = append(cfg.Certificates, certs)
+                }
+            }
+        }
+
         connection, err = mq.DialTLS(brokerUri, cfg)
         if err != nil {
             panic(fmt.Errorf("BrokerErrMsg: %s", err))

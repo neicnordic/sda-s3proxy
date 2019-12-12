@@ -15,6 +15,7 @@ broker:
   exchange: "localega.v1"
   routingKey: "files.inbox"
   ssl: "true"
+  verifyPeer: "true"
   cacert: "./dummy/certs/ca.crt"
   clientCert: "./dummy/certs/client.crt"
   clientKey: "./dummy/certs/client.key"
