@@ -2,6 +2,8 @@ aws:
   url: "http://localhost:9000"
   accessKey: "ElexirID"
   secretKey: "987654321"
+  bucket: "test"
+  region: ""
 
 broker:
   host: "localhost"

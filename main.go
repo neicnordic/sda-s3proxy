@@ -28,7 +28,7 @@ var AmqpChannel *amqp.Channel
 var err error
 var (
     confVars         = []string{
-                        "aws.url", "aws.accessKey", "aws.secretKey", "broker.host","broker.port", "broker.user",
+                        "aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket","broker.host","broker.port", "broker.user",
                         "broker.password", "broker.vhost","broker.exchange", "broker.routingKey", "broker.ssl",
                         }
     backedS3Url      = ""
@@ -103,6 +103,9 @@ func main() {
 
     if brokerSsl == "true" {
         cfg := new(tls.Config)
+
+        // Enforce TLS1.2 or higher 
+        cfg.MinVersion = 2
 
         cfg.RootCAs = x509.NewCertPool()
 
@@ -326,7 +329,7 @@ func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
 }
 
 func allowedResponse(w http.ResponseWriter, r *http.Request) {
-    bucket := "test"
+    bucket := viper.Get("aws.bucket").(string)
     re := regexp.MustCompile("/([^/]+)/")
     username = re.FindStringSubmatch(r.URL.Path)[1]
     if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?delimiter") {
