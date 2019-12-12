@@ -1,5 +1,5 @@
 aws:
-  url: "http://localhost:9000"
+  url: "https://localhost:9000"
   accessKey: "ElexirID"
   secretKey: "987654321"
   bucket: "test"
