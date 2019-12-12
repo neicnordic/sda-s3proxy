@@ -258,12 +258,13 @@ func extractSignature(r *http.Request) string {
 // 2) Sign the request with the new credentials
 // 3) Compare the signatures between the requests and return authentication status
 func authenticateUser(r *http.Request) error {
-    if strings.Contains(r.URL.String(), "?location") {
-        re := regexp.MustCompile("Credential=([^/]+)/")
-        curAccessKey := re.FindStringSubmatch(r.Header.Get("Authorization"))[1]
-        signature := extractSignature(r)
+    re := regexp.MustCompile("Credential=([^/]+)/")
+    curAccessKey := re.FindStringSubmatch(r.Header.Get("Authorization"))[1]
+    if curSecretKey, ok := usersMap[curAccessKey]; ok {
 
-        if curSecretKey, ok := usersMap[curAccessKey]; ok {
+        if r.Method == http.MethodGet {
+        
+            signature := extractSignature(r)
             // Create signing request
             nr, err := http.NewRequest(r.Method, r.URL.String(), r.Body)
             if err != nil {
@@ -282,10 +283,10 @@ func authenticateUser(r *http.Request) error {
                 err = fmt.Errorf("User signature not authenticated")
                 return err
             }
-        } else {
-            err = fmt.Errorf("User not existing")
-            return err
-        }
+        } 
+    } else {
+        err = fmt.Errorf("User not existing")
+        return err
     }
     return nil
 }
