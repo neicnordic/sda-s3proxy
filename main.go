@@ -109,6 +109,10 @@ func main() {
 
         cfg.RootCAs = x509.NewCertPool()
 
+        if viper.Get("broker.serverName") != nil {
+            cfg.ServerName = viper.Get("broker.serverName").(string)
+        }
+
         cacert := viper.Get("broker.caCert").(string)
         if ca, err := ioutil.ReadFile(cacert); err == nil {
             cfg.RootCAs.AppendCertsFromPEM(ca)
