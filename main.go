@@ -25,6 +25,7 @@ import (
 
 var logHandle *os.File
 var AmqpChannel *amqp.Channel
+var SystemCAs, _ = x509.SystemCertPool()
 var err error
 var (
     confVars         = []string{
@@ -100,6 +101,12 @@ func main() {
     brokerUri := buildMqUri(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
 
     var connection *amqp.Connection
+
+
+    if SystemCAs == nil {
+        fmt.Println("creating new CApool")
+        SystemCAs = x509.NewCertPool()
+    }
 
     if brokerSsl == "true" {
         cfg := new(tls.Config)
@@ -351,6 +358,24 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
     }
     resignHeader(r, backedAccessKey, backedSecretKey, backedS3Url)
 
+    cfg := new(tls.Config)
+
+    cfg.RootCAs = SystemCAs
+
+    if viper.Get("aws.cacert") != nil {
+        cacert, err := ioutil.ReadFile(viper.Get("aws.cacert").(string))
+        if err != nil {
+            log.Fatalf("Failed to append %q to RootCAs: %v", cacert, err)
+        }
+
+        if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
+            log.Println("No certs appended, using system certs only")
+        }
+    }
+
+    tr := &http.Transport{TLSClientConfig: cfg}
+    client := &http.Client{Transport: tr}
+    
     // Redirect request
     nr, err := http.NewRequest(r.Method, backedS3Url+r.URL.String(), r.Body)
     if err != nil {
@@ -359,7 +384,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
     nr.Header = r.Header
     contentLength, err := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
     nr.ContentLength = contentLength
-    response, err := http.DefaultClient.Do(nr)
+    response, err := client.Do(nr)
     if err != nil {
         fmt.Println(err)
     }

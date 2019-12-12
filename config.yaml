@@ -4,6 +4,7 @@ aws:
   secretKey: "987654321"
   bucket: "test"
   region: ""
+  cacert: "./dummy/certs/ca.crt"
 
 broker:
   host: "localhost"
