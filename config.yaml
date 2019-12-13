@@ -26,3 +26,4 @@ broker:
 server:
   cert: "./dummy/certs/proxy.crt"
   key: "./dummy/certs/proxy.key"
+  users: "./dummy/users.csv"

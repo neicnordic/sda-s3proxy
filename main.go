@@ -30,7 +30,7 @@ var err error
 var (
     confVars         = []string{
                         "aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket","broker.host","broker.port", "broker.user",
-                        "broker.password", "broker.vhost","broker.exchange", "broker.routingKey", "broker.ssl",
+                        "broker.password", "broker.vhost","broker.exchange", "broker.routingKey", "broker.ssl","server.users",
                         }
     backedS3Url      = ""
     backedAccessKey  = ""
@@ -190,7 +190,7 @@ func main() {
 
 func readUsersFile() map[string]string {
     users := make(map[string]string)
-    f, err := os.Open("users.csv")
+    f, err := os.Open(viper.Get("server.users").(string))
     if err!=nil {
         panic(fmt.Errorf("UsersFileErrMsg: %s", err))
     }
