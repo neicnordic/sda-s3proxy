@@ -19,7 +19,8 @@ import (
     "crypto/x509"
     "io/ioutil"
     "regexp"
-
+    "encoding/csv"
+    "bufio"
 )
 
 var logHandle *os.File
@@ -58,6 +59,7 @@ type Checksum struct {
 }
 
 var username string
+var usersMap map[string]string
 
 func main() {
     viper.SetConfigName("config")
@@ -139,6 +141,8 @@ func main() {
 
     logHandle, _ = os.Create("_requestLog.dump")
 
+    usersMap = readUsersFile()
+
     http.HandleFunc("/", handler)
 
     if (viper.Get("server.Cert") != nil && viper.Get("server.Key") != nil && viper.Get("server.Cert").(string) != "" && viper.Get("server.Key").(string) != ""){
@@ -156,6 +160,24 @@ func main() {
 
 }
 
+func readUsersFile() map[string]string {
+    users := make(map[string]string)
+    f, err := os.Open("users.csv")
+    if err!=nil {
+        panic(fmt.Errorf("UsersFileErrMsg: %s", err))
+    }
+
+    r := csv.NewReader(bufio.NewReader(f))
+    for {
+        record, err := r.Read()
+        if err == io.EOF {
+            break
+        }
+        users[record[0]] = record[1]
+    }
+    return users
+}
+
 func buildMqUri(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) string {
     brokerUri := ""
     if ssl == "true" {
@@ -166,10 +188,13 @@ func buildMqUri(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) string 
     return brokerUri
 }
 
-func resignHeader(r *http.Request) *http.Request {
-    host := strings.SplitN(backedS3Url, "//", 2)
-    r.Host = host[1]
-    return s3signer.SignV4(*r, backedAccessKey, backedSecretKey, "", "us-east-1")
+func resignHeader(r *http.Request, accessKey string, secretKey string, backendUrl string) *http.Request {
+    if strings.Contains(backendUrl, "//") {
+        host := strings.SplitN(backendUrl, "//", 2)
+        r.Host = host[1]
+    }
+    
+    return s3signer.SignV4(*r, accessKey, secretKey, "", "us-east-1")
 }
 
 type S3RequestType int
@@ -219,8 +244,50 @@ func detectRequestType(r *http.Request) S3RequestType {
     return Other
 } 
 
-// Don't know exactly how to do this yet
+// Extracts the signature from the authorization header
+func extractSignature(r *http.Request) string {
+    
+    re := regexp.MustCompile("Signature=(.*)")
+    signature := re.FindStringSubmatch(r.Header.Get("Authorization"))[1]
+
+    return signature
+}
+
+// Authenticates the user against stored credentials
+// 1) Extracts the username and retrieve the key from the map
+// 2) Sign the request with the new credentials
+// 3) Compare the signatures between the requests and return authentication status
 func authenticateUser(r *http.Request) error {
+    re := regexp.MustCompile("Credential=([^/]+)/")
+    curAccessKey := re.FindStringSubmatch(r.Header.Get("Authorization"))[1]
+    if curSecretKey, ok := usersMap[curAccessKey]; ok {
+
+        if r.Method == http.MethodGet {
+        
+            signature := extractSignature(r)
+            // Create signing request
+            nr, err := http.NewRequest(r.Method, r.URL.String(), r.Body)
+            if err != nil {
+                fmt.Println(err)
+            }
+            // Add required headers
+            nr.Header.Set("X-Amz-Date", r.Header.Get("X-Amz-Date"))
+            nr.Header.Set("X-Amz-Content-Sha256", r.Header.Get("X-Amz-Content-Sha256"))
+            nr.Host = r.Host
+            nr.URL.RawQuery = r.URL.RawQuery
+            // Sing the new request
+            resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
+            curSignature := extractSignature(nr)
+            // Compare signatures
+            if curSignature != signature {
+                err = fmt.Errorf("User signature not authenticated")
+                return err
+            }
+        } 
+    } else {
+        err = fmt.Errorf("User not existing")
+        return err
+    }
     return nil
 }
 
@@ -275,7 +342,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
     } else if r.Method == http.MethodPost || r.Method == http.MethodPut {
         r.URL.Path = "/"+bucket+r.URL.Path
     }
-    resignHeader(r)
+    resignHeader(r, backedAccessKey, backedSecretKey, backedS3Url)
 
     // Redirect request
     nr, err := http.NewRequest(r.Method, backedS3Url+r.URL.String(), r.Body)
@@ -289,7 +356,6 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
     if err != nil {
         fmt.Println(err)
     }
-
 
     // Log answer
     responseDump, err := httputil.DumpResponse(response, true)
