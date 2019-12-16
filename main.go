@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -89,6 +90,14 @@ func main() {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.SetConfigType("yaml")
+	if viper.Get("server.confPath") != nil {
+		cp := viper.Get("server.confPath").(string)
+		ss := strings.Split(strings.TrimLeft(cp, "/"), "/")
+		if ss[0] != "config" {
+			ss = ss[:len(ss)-1]
+		}
+		viper.AddConfigPath(path.Join(ss...))
+	}
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Config file not found; ignore error if desired
