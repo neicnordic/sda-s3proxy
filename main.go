@@ -98,7 +98,7 @@ func main() {
 		}
 		viper.AddConfigPath(path.Join(ss...))
 	}
-	if err := viper.ReadInConfig(); err != nil {
+	if err = viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Config file not found; ignore error if desired
 			for _, s := range confVars {
@@ -150,8 +150,8 @@ func main() {
 		}
 
 		if viper.Get("broker.caCert") != nil {
-			cacert, err := ioutil.ReadFile(viper.Get("broker.cacert").(string))
-			if err != nil {
+			cacert, e := ioutil.ReadFile(viper.Get("broker.cacert").(string))
+			if e != nil {
 				log.Fatalf("Failed to append %q to RootCAs: %v", cacert, err)
 			}
 			if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
@@ -161,15 +161,15 @@ func main() {
 
 		if viper.Get("broker.verifyPeer").(string) == "true" {
 			if viper.Get("broker.clientCert") != nil && viper.Get("broker.clientKey") != nil {
-				cert, err := ioutil.ReadFile(viper.Get("broker.clientCert").(string))
-				if err != nil {
+				cert, e := ioutil.ReadFile(viper.Get("broker.clientCert").(string))
+				if e != nil {
 					log.Fatalf("Failed to append %q to RootCAs: %v", cert, err)
 				}
-				key, err := ioutil.ReadFile(viper.Get("broker.clientKey").(string))
-				if err != nil {
+				key, e := ioutil.ReadFile(viper.Get("broker.clientKey").(string))
+				if e != nil {
 					log.Fatalf("Failed to append %q to RootCAs: %v", key, err)
 				}
-				if certs, err := tls.X509KeyPair(cert, key); err == nil {
+				if certs, e := tls.X509KeyPair(cert, key); e == nil {
 					cfg.Certificates = append(cfg.Certificates, certs)
 				}
 			}
@@ -203,12 +203,12 @@ func main() {
 	http.HandleFunc("/", handler)
 
 	if viper.Get("server.Cert") != nil && viper.Get("server.Key") != nil && viper.Get("server.Cert").(string) != "" && viper.Get("server.Key").(string) != "" {
-		if err := http.ListenAndServeTLS(":8000", viper.Get("server.Cert").(string), viper.Get("server.Key").(string), nil); err != nil {
+		if e := http.ListenAndServeTLS(":8000", viper.Get("server.Cert").(string), viper.Get("server.Key").(string), nil); e != nil {
 			panic(err)
 		}
 	} else {
-		if err := http.ListenAndServe(":8000", nil); err != nil {
-			panic(err)
+		if e := http.ListenAndServe(":8000", nil); e != nil {
+			panic(e)
 		}
 	}
 
@@ -219,15 +219,15 @@ func main() {
 
 func readUsersFile() map[string]string {
 	users := make(map[string]string)
-	f, err := os.Open(viper.Get("server.users").(string))
-	if err != nil {
-		panic(fmt.Errorf("UsersFileErrMsg: %s", err))
+	f, e := os.Open(viper.Get("server.users").(string))
+	if e != nil {
+		panic(fmt.Errorf("UsersFileErrMsg: %s", e))
 	}
 
 	r := csv.NewReader(bufio.NewReader(f))
 	for {
-		record, err := r.Read()
-		if err == io.EOF {
+		record, e := r.Read()
+		if e == io.EOF {
 			break
 		}
 		users[record[0]] = record[1]
@@ -298,8 +298,8 @@ func authenticateUser(r *http.Request) error {
 
 			signature := extractSignature(r)
 			// Create signing request
-			nr, err := http.NewRequest(r.Method, r.URL.String(), r.Body)
-			if err != nil {
+			nr, e := http.NewRequest(r.Method, r.URL.String(), r.Body)
+			if e != nil {
 				fmt.Println(err)
 			}
 			// Add required headers
@@ -402,7 +402,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	nr.Header = r.Header
-	contentLength, err := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
+	contentLength, _ := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
 	nr.ContentLength = contentLength
 	response, err := client.Do(nr)
 	if err != nil {
@@ -446,15 +446,18 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 		checksum.Value = r.Header.Get("x-amz-content-sha256")
 		event.Checksum = checksum
 
-		body, err := json.Marshal(event)
-		if err != nil {
-			log.Fatalf("%s", err)
+		body, e := json.Marshal(event)
+		if e != nil {
+			log.Fatalf("%s", e)
 		}
-		if err := mq.Publish(brokerExchange, brokerRoutingKey, string(body), true, AmqpChannel); err != nil {
-			log.Fatalf("%s", err)
+		if e := mq.Publish(brokerExchange, brokerRoutingKey, string(body), true, AmqpChannel); e != nil {
+			log.Fatalf("%s", e)
 		}
 	}
 
 	// Redirect answer
-	io.Copy(w, response.Body)
+	_, err = io.Copy(w, response.Body)
+	if err != nil {
+		log.Fatalln("redirect error")
+	}
 }
