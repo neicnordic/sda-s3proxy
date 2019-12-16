@@ -23,10 +23,6 @@ import (
 	"github.com/streadway/amqp"
 )
 
-var logHandle *os.File
-var AmqpChannel *amqp.Channel
-var SystemCAs, _ = x509.SystemCertPool()
-var err error
 var (
 	confVars = []string{
 		"aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket", "broker.host", "broker.port", "broker.user",
@@ -43,8 +39,26 @@ var (
 	brokerExchange   = ""
 	brokerSsl        = ""
 	brokerRoutingKey = ""
+	username string
+	usersMap map[string]string
+	err error
 )
 
+var logHandle *os.File
+
+// AmqpChannel is an AmqpChannel
+var AmqpChannel *amqp.Channel
+
+// SystemCAs holds the Ca certs from the base system
+var SystemCAs, _ = x509.SystemCertPool()
+
+// Checksum used in the message
+type Checksum struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+// The Event struct
 type Event struct {
 	Operation string   `json:"operation"`
 	Username  string   `json:"user"`
@@ -53,13 +67,21 @@ type Event struct {
 	Checksum  Checksum `json:"encoded_checksum"`
 }
 
-type Checksum struct {
-	Type  string `json:"type"`
-	Value string `json:"value"`
-}
+// S3RequestType is the
+type S3RequestType int
 
-var username string
-var usersMap map[string]string
+// This is a list of constants for detecting S3 actions
+const (
+	MakeBucket S3RequestType = iota
+	RemoveBucket
+	List
+	Put
+	Get
+	Delete
+	AbortMultipart
+	Policy
+	Other
+)
 
 func main() {
 	viper.SetConfigName("config")
@@ -212,21 +234,6 @@ func resignHeader(r *http.Request, accessKey string, secretKey string, backendUR
 
 	return s3signer.SignV4(*r, accessKey, secretKey, "", "us-east-1")
 }
-
-type S3RequestType int
-
-const (
-	MakeBucket S3RequestType = iota
-	RemoveBucket
-	List
-	Put
-	Get
-	Delete
-	// Fill in more if needed
-	AbortMultipart
-	Policy
-	Other
-)
 
 func detectRequestType(r *http.Request) S3RequestType {
 	switch r.Method {
