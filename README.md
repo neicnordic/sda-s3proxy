@@ -4,11 +4,11 @@ S3 Upload Proxy
 
 ## Backend services
 
-In the `dummy` folder ther is an docker compose file that will start the required backed services.  
+In the `dev_utils` folder ther is an docker compose file that will start the required backed services.  
 Use the command below to start the servies in a detached state.
 
 ```sh
-docker-compose -f dummy/docker-compose.yml up -d
+docker-compose -f dev_utils/docker-compose.yml up -d
 ```
 
 ## Building the image
@@ -24,7 +24,7 @@ docker build -t nbisweden/s3inbox:latest .
 Using the compose file
 
 ```sh
-docker-compose -f dummy/docker-compose.yml build
+docker-compose -f dev_utils/docker-compose.yml build
 ```
 
 ## Configuration
