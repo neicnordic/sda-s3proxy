@@ -1,26 +1,26 @@
 package main
 
 import (
-	"fmt"
-	"github.com/minio/minio-go/v6/pkg/s3signer"
-	"io"
-	"net/http"
-	"net/http/httputil"
-	"os"
-	"strconv"
-	"strings"
-
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/http/httputil"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/minio/minio-go/v6/pkg/s3signer"
 	"github.com/NBISweden/S3-Upload-Proxy/mq"
 	"github.com/spf13/viper"
 	"github.com/streadway/amqp"
-	"io/ioutil"
-	"log"
-	"regexp"
 )
 
 var logHandle *os.File
