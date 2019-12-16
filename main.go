@@ -48,10 +48,10 @@ var (
 
 type Event struct {
     Operation string `json:"operation"`
-    Username string `json:"username"`
+    Username string `json:"user"`
     Filepath string `json:"filepath"`
     Filesize int64 `json:"filesize"`
-    Checksum Checksum `json:"checksum"`
+    Checksum Checksum `json:"encoded_checksum"`
 }
 
 type Checksum struct {

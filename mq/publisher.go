@@ -6,6 +6,7 @@ import (
     "crypto/tls"
 
     "github.com/streadway/amqp"
+    "github.com/google/uuid"
 )
 
 func DialTLS(amqpURI string, cfg *tls.Config) (*amqp.Connection, error) {
@@ -69,6 +70,7 @@ func Publish(exchange, routingKey, body string, reliable bool, channel *amqp.Cha
         defer confirmOne(confirms)
     }
 
+    corrID, _ := uuid.NewRandom()
     log.Printf("declared Exchange, publishing %dB body (%q)", len(body), body)
     err := channel.Publish(
         exchange,   // publish to an exchange
@@ -77,11 +79,12 @@ func Publish(exchange, routingKey, body string, reliable bool, channel *amqp.Cha
         false,      // immediate
         amqp.Publishing{
             Headers:         amqp.Table{},
-            ContentType:     "text/plain",
-            ContentEncoding: "",
-            Body:            []byte(body),
+            ContentEncoding: "UTF-8",
+            ContentType:     "application/json",
             DeliveryMode:    amqp.Transient, // 1=non-persistent, 2=persistent
+            CorrelationId:   corrID.String(),
             Priority:        0,              // 0-9
+            Body:            []byte(body),
             // a bunch of application/implementation-specific fields
         },
     )
