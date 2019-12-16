@@ -40,9 +40,9 @@ var (
 	brokerExchange   = ""
 	brokerSsl        = ""
 	brokerRoutingKey = ""
-	username string
-	usersMap map[string]string
-	err error
+	username         string
+	usersMap         map[string]string
+	err              error
 )
 
 var logHandle *os.File
