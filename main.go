@@ -25,11 +25,12 @@ import (
 
 var logHandle *os.File
 var AmqpChannel *amqp.Channel
+var SystemCAs, _ = x509.SystemCertPool()
 var err error
 var (
     confVars         = []string{
-                        "aws.url", "aws.accessKey", "aws.secretKey", "broker.host","broker.port", "broker.user",
-                        "broker.password", "broker.vhost","broker.exchange", "broker.routingKey", "broker.ssl",
+                        "aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket","broker.host","broker.port", "broker.user",
+                        "broker.password", "broker.vhost","broker.exchange", "broker.routingKey", "broker.ssl","server.users",
                         }
     backedS3Url      = ""
     backedAccessKey  = ""
@@ -101,23 +102,50 @@ func main() {
 
     var connection *amqp.Connection
 
+
+    if SystemCAs == nil {
+        fmt.Println("creating new CApool")
+        SystemCAs = x509.NewCertPool()
+    }
+
     if brokerSsl == "true" {
         cfg := new(tls.Config)
 
-        cfg.RootCAs = x509.NewCertPool()
+        // Enforce TLS1.2 or higher 
+        cfg.MinVersion = 2
 
-        cacert := viper.Get("broker.caCert").(string)
-        if ca, err := ioutil.ReadFile(cacert); err == nil {
-            cfg.RootCAs.AppendCertsFromPEM(ca)
+        cfg.RootCAs = SystemCAs
+
+        if viper.Get("broker.serverName") != nil {
+            cfg.ServerName = viper.Get("broker.serverName").(string)
         }
 
-        cert := viper.Get("broker.clientCert")
-        key := viper.Get("broker.clientKey")
-        if (cert != nil && key != nil) {
-            if cert, err := tls.LoadX509KeyPair(cert.(string), key.(string)); err == nil {
-                cfg.Certificates = append(cfg.Certificates, cert)
+        if viper.Get("broker.caCert") != nil {
+            cacert, err := ioutil.ReadFile(viper.Get("broker.cacert").(string))
+            if err != nil {
+                log.Fatalf("Failed to append %q to RootCAs: %v", cacert, err)
+            }
+            if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
+                log.Println("No certs appended, using system certs only")
             }
         }
+
+        if viper.Get("broker.verifyPeer").(string) == "true" {
+            if (viper.Get("broker.clientCert") != nil && viper.Get("broker.clientKey") != nil) {
+                cert, err := ioutil.ReadFile(viper.Get("broker.clientCert").(string))
+                if err != nil {
+                    log.Fatalf("Failed to append %q to RootCAs: %v", cert, err)
+                }
+                key, err := ioutil.ReadFile(viper.Get("broker.clientKey").(string))
+                if err != nil {
+                    log.Fatalf("Failed to append %q to RootCAs: %v", key, err)
+                }
+                if certs, err := tls.X509KeyPair(cert, key); err == nil {
+                    cfg.Certificates = append(cfg.Certificates, certs)
+                }
+            }
+        }
+
         connection, err = mq.DialTLS(brokerUri, cfg)
         if err != nil {
             panic(fmt.Errorf("BrokerErrMsg: %s", err))
@@ -162,7 +190,7 @@ func main() {
 
 func readUsersFile() map[string]string {
     users := make(map[string]string)
-    f, err := os.Open("users.csv")
+    f, err := os.Open(viper.Get("server.users").(string))
     if err!=nil {
         panic(fmt.Errorf("UsersFileErrMsg: %s", err))
     }
@@ -326,7 +354,7 @@ func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
 }
 
 func allowedResponse(w http.ResponseWriter, r *http.Request) {
-    bucket := "test"
+    bucket := viper.Get("aws.bucket").(string)
     re := regexp.MustCompile("/([^/]+)/")
     username = re.FindStringSubmatch(r.URL.Path)[1]
     if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?delimiter") {
@@ -344,6 +372,24 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
     }
     resignHeader(r, backedAccessKey, backedSecretKey, backedS3Url)
 
+    cfg := new(tls.Config)
+
+    cfg.RootCAs = SystemCAs
+
+    if viper.Get("aws.cacert") != nil {
+        cacert, err := ioutil.ReadFile(viper.Get("aws.cacert").(string))
+        if err != nil {
+            log.Fatalf("Failed to append %q to RootCAs: %v", cacert, err)
+        }
+
+        if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
+            log.Println("No certs appended, using system certs only")
+        }
+    }
+
+    tr := &http.Transport{TLSClientConfig: cfg}
+    client := &http.Client{Transport: tr}
+    
     // Redirect request
     nr, err := http.NewRequest(r.Method, backedS3Url+r.URL.String(), r.Body)
     if err != nil {
@@ -352,7 +398,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
     nr.Header = r.Header
     contentLength, err := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
     nr.ContentLength = contentLength
-    response, err := http.DefaultClient.Do(nr)
+    response, err := client.Do(nr)
     if err != nil {
         fmt.Println(err)
     }

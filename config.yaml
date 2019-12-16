@@ -1,7 +1,10 @@
 aws:
-  url: "http://localhost:9000"
+  url: "https://localhost:9000"
   accessKey: "ElexirID"
   secretKey: "987654321"
+  bucket: "test"
+  region: ""
+  cacert: "./dummy/certs/ca.crt"
 
 broker:
   host: "localhost"
@@ -12,10 +15,15 @@ broker:
   exchange: "localega.v1"
   routingKey: "files.inbox"
   ssl: "true"
+  verifyPeer: "true"
   cacert: "./dummy/certs/ca.crt"
-  clientcert: "./dummy/certs/client.crt"
-  clientkey: "./dummy/certs/client.key"
+  clientCert: "./dummy/certs/client.crt"
+  clientKey: "./dummy/certs/client.key"
+# If the FQDN and hostname of the broker differ
+# serverName can be set to the SAN name in the certificate
+  #  serverName: ""
 
 server:
   cert: "./dummy/certs/proxy.crt"
   key: "./dummy/certs/proxy.key"
+  users: "./dummy/users.csv"
