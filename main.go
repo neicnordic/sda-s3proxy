@@ -17,8 +17,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/minio/minio-go/v6/pkg/s3signer"
 	"github.com/NBISweden/S3-Upload-Proxy/mq"
+	"github.com/minio/minio-go/v6/pkg/s3signer"
 	"github.com/spf13/viper"
 	"github.com/streadway/amqp"
 )
@@ -81,7 +81,7 @@ func main() {
 				}
 			}
 		} else {
-			panic(fmt.Errorf("Fatal error config file: %s \n", err))
+			panic(fmt.Errorf("fatal error config file: %s", err))
 		}
 	}
 
@@ -97,7 +97,7 @@ func main() {
 	brokerRoutingKey = viper.Get("broker.routingKey").(string)
 	brokerSsl = viper.Get("broker.ssl").(string)
 
-	brokerUri := mq.BuildMqUri(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
+	brokerURI := mq.BuildMqUri(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
 
 	var connection *amqp.Connection
 
@@ -144,12 +144,12 @@ func main() {
 			}
 		}
 
-		connection, err = mq.DialTLS(brokerUri, cfg)
+		connection, err = mq.DialTLS(brokerURI, cfg)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
 		}
 	} else {
-		connection, err = mq.Dial(brokerUri)
+		connection, err = mq.Dial(brokerURI)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
 		}
@@ -204,10 +204,9 @@ func readUsersFile() map[string]string {
 	return users
 }
 
-
-func resignHeader(r *http.Request, accessKey string, secretKey string, backendUrl string) *http.Request {
-	if strings.Contains(backendUrl, "//") {
-		host := strings.SplitN(backendUrl, "//", 2)
+func resignHeader(r *http.Request, accessKey string, secretKey string, backendURL string) *http.Request {
+	if strings.Contains(backendURL, "//") {
+		host := strings.SplitN(backendURL, "//", 2)
 		r.Host = host[1]
 	}
 
