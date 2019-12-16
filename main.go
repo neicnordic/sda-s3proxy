@@ -313,13 +313,13 @@ func authenticateUser(r *http.Request) error {
 			// Compare signatures
 			if curSignature != signature {
 				log.Println("User signature not authenticated ", curAccessKey)
-				err = fmt.Errorf("User signature not authenticated")
+				err = fmt.Errorf("user signature not authenticated")
 				return err
 			}
 		}
 	} else {
 		log.Println("User not existing: ", curAccessKey)
-		err = fmt.Errorf("User not existing")
+		err = fmt.Errorf("user not existing")
 		return err
 	}
 	return nil
