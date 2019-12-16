@@ -98,6 +98,12 @@ func main() {
 		}
 		viper.AddConfigPath(path.Join(ss...))
 	}
+	if viper.Get("server.confFile") != nil {
+		ss := strings.Split(viper.Get("server.confFile").(string), ".")
+		if ss[len(ss)-1] == "yml" || ss[len(ss)-1] == "yaml" {
+			viper.SetConfigFile(viper.Get("server.confFile").(string))
+		}
+	}
 	if err = viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Config file not found; ignore error if desired
