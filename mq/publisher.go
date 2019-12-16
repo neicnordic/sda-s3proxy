@@ -9,6 +9,16 @@ import (
 	"github.com/streadway/amqp"
 )
 
+func BuildMqUri(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) string {
+	brokerUri := ""
+	if ssl == "true" {
+		brokerUri = "amqps://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
+	} else {
+		brokerUri = "amqp://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
+	}
+	return brokerUri
+}
+
 func DialTLS(amqpURI string, cfg *tls.Config) (*amqp.Connection, error) {
 	connection, err := amqp.DialTLS(amqpURI, cfg)
 	if err != nil {

@@ -97,7 +97,7 @@ func main() {
 	brokerRoutingKey = viper.Get("broker.routingKey").(string)
 	brokerSsl = viper.Get("broker.ssl").(string)
 
-	brokerUri := buildMqUri(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
+	brokerUri := mq.BuildMqUri(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
 
 	var connection *amqp.Connection
 
@@ -204,15 +204,6 @@ func readUsersFile() map[string]string {
 	return users
 }
 
-func buildMqUri(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) string {
-	brokerUri := ""
-	if ssl == "true" {
-		brokerUri = "amqps://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
-	} else {
-		brokerUri = "amqp://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
-	}
-	return brokerUri
-}
 
 func resignHeader(r *http.Request, accessKey string, secretKey string, backendUrl string) *http.Request {
 	if strings.Contains(backendUrl, "//") {
