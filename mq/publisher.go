@@ -9,16 +9,18 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func BuildMqUri(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) string {
-	brokerUri := ""
+// BuildMqURI builds the MQ URI
+func BuildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) string {
+	brokerURI := ""
 	if ssl == "true" {
-		brokerUri = "amqps://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
+		brokerURI = "amqps://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
 	} else {
-		brokerUri = "amqp://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
+		brokerURI = "amqp://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
 	}
-	return brokerUri
+	return brokerURI
 }
 
+// DialTLS creates the actual connection to the MQ server
 func DialTLS(amqpURI string, cfg *tls.Config) (*amqp.Connection, error) {
 	connection, err := amqp.DialTLS(amqpURI, cfg)
 	if err != nil {
@@ -29,6 +31,7 @@ func DialTLS(amqpURI string, cfg *tls.Config) (*amqp.Connection, error) {
 	return connection, nil
 }
 
+// Dial creates the actual connection to the MQ server
 func Dial(amqpURI string) (*amqp.Connection, error) {
 	connection, err := amqp.Dial(amqpURI)
 	if err != nil {
@@ -38,6 +41,7 @@ func Dial(amqpURI string) (*amqp.Connection, error) {
 	return connection, nil
 }
 
+// Channel holds the message channel information
 func Channel(connection *amqp.Connection) (*amqp.Channel, error) {
 	log.Printf("got Connection, getting Channel")
 	channel, err := connection.Channel()
@@ -48,6 +52,7 @@ func Channel(connection *amqp.Connection) (*amqp.Channel, error) {
 	return channel, nil
 }
 
+// Exchange declares the echange that messages are sent to
 func Exchange(channel *amqp.Channel, exchange string) error {
 	log.Printf("got Channel, declaring topic Exchange (%q)", exchange)
 	if err := channel.ExchangeDeclare(
@@ -65,6 +70,7 @@ func Exchange(channel *amqp.Channel, exchange string) error {
 	return nil
 }
 
+// Publish published the message to the Exchange with the specified routing key
 func Publish(exchange, routingKey, body string, reliable bool, channel *amqp.Channel) error {
 
 	// Reliable publisher confirms require confirm.select support from the

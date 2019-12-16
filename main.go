@@ -119,7 +119,7 @@ func main() {
 	brokerRoutingKey = viper.Get("broker.routingKey").(string)
 	brokerSsl = viper.Get("broker.ssl").(string)
 
-	brokerURI := mq.BuildMqUri(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
+	brokerURI := mq.BuildMqURI(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
 
 	var connection *amqp.Connection
 
