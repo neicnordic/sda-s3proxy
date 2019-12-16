@@ -64,6 +64,7 @@ services:
       - BROKER_CLIENTKEY=/certs/client.key
       - SERVER_CERT=/certs/proxy.crt
       - SERVER_KEY=/certs/proxy.key
+      - SERVER_USERS=users.csv
     volumes:
       - ./certs/ca.crt:/certs/ca.crt
       - ./certs/client.crt:/certs/client.crt

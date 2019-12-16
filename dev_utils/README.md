@@ -1,6 +1,5 @@
 # Dev environment setup recomendations
 
-
 ## minio s3 server
 
 Run the minio local thing by starting it with
