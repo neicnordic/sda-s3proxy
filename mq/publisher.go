@@ -26,7 +26,6 @@ func DialTLS(amqpURI string, cfg *tls.Config) (*amqp.Connection, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Dial: %s", err)
 	}
-	log.Printf("conn: %v, err: %v", connection, err)
 
 	return connection, nil
 }
