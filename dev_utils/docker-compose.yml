@@ -46,7 +46,7 @@ services:
       - s3_backend
     restart: always
     environment:
-      - AWS_URL=http://s3:9000
+      - AWS_URL=https://s3:9000
       - AWS_ACCESSKEY=ElexirID
       - AWS_SECRETKEY=987654321
       - AWS_BUCKET=test

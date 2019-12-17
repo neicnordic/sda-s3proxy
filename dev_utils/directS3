@@ -10,5 +10,5 @@ host_base = localhost:9000
 host_bucket = localhost:9000
 human_readable_sizes = true
 multipart_chunk_size_mb = 5
-use_https = false
+use_https = true
 socket_timeout = 30
