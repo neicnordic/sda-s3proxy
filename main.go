@@ -165,7 +165,7 @@ func main() {
 			}
 		}
 
-		if viper.Get("broker.verifyPeer").(string) == "true" {
+		if viper.Get("broker.verifyPeer") != nil && viper.Get("broker.verifyPeer") == "true" {
 			if viper.Get("broker.clientCert") != nil && viper.Get("broker.clientKey") != nil {
 				cert, e := ioutil.ReadFile(viper.Get("broker.clientCert").(string))
 				if e != nil {

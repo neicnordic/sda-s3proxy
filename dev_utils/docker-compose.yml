@@ -62,6 +62,7 @@ services:
       - BROKER_CACERT=/certs/ca.crt
       - BROKER_CLIENTCERT=/certs/client.crt
       - BROKER_CLIENTKEY=/certs/client.key
+      - BROKER_VERIFYPEER=true
       - SERVER_CERT=/certs/proxy.crt
       - SERVER_KEY=/certs/proxy.key
       - SERVER_USERS=users.csv
@@ -71,5 +72,6 @@ services:
       - ./certs/client.key:/certs/client.key
       - ./certs/proxy.crt:/certs/proxy.crt
       - ./certs/proxy.key:/certs/proxy.key
+      - ./users.csv:/users.csv
     ports:
       - "8000:8000"
