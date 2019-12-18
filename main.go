@@ -158,7 +158,7 @@ func main() {
 		if viper.Get("broker.caCert") != nil {
 			cacert, e := ioutil.ReadFile(viper.Get("broker.cacert").(string))
 			if e != nil {
-				log.Fatalf("Failed to append %q to RootCAs: %v", cacert, err)
+				log.Fatalf("Failed to append %q to RootCAs: %v", cacert, e)
 			}
 			if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
 				log.Println("No certs appended, using system certs only")
@@ -169,11 +169,11 @@ func main() {
 			if viper.Get("broker.clientCert") != nil && viper.Get("broker.clientKey") != nil {
 				cert, e := ioutil.ReadFile(viper.Get("broker.clientCert").(string))
 				if e != nil {
-					log.Fatalf("Failed to append %q to RootCAs: %v", cert, err)
+					log.Fatalf("Failed to append %q to RootCAs: %v", cert, e)
 				}
 				key, e := ioutil.ReadFile(viper.Get("broker.clientKey").(string))
 				if e != nil {
-					log.Fatalf("Failed to append %q to RootCAs: %v", key, err)
+					log.Fatalf("Failed to append %q to RootCAs: %v", key, e)
 				}
 				if certs, e := tls.X509KeyPair(cert, key); e == nil {
 					cfg.Certificates = append(cfg.Certificates, certs)
@@ -210,7 +210,7 @@ func main() {
 
 	if viper.Get("server.Cert") != nil && viper.Get("server.Key") != nil && viper.Get("server.Cert").(string) != "" && viper.Get("server.Key").(string) != "" {
 		if e := http.ListenAndServeTLS(":8000", viper.Get("server.Cert").(string), viper.Get("server.Key").(string), nil); e != nil {
-			panic(err)
+			panic(e)
 		}
 	} else {
 		if e := http.ListenAndServe(":8000", nil); e != nil {
@@ -306,7 +306,7 @@ func authenticateUser(r *http.Request) error {
 			// Create signing request
 			nr, e := http.NewRequest(r.Method, r.URL.String(), r.Body)
 			if e != nil {
-				fmt.Println(err)
+				fmt.Println(e)
 			}
 			// Add required headers
 			nr.Header.Set("X-Amz-Date", r.Header.Get("X-Amz-Date"))
