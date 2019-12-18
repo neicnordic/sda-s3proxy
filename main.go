@@ -29,9 +29,9 @@ var (
 		"aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket", "broker.host", "broker.port", "broker.user",
 		"broker.password", "broker.vhost", "broker.exchange", "broker.routingKey", "broker.ssl", "server.users",
 	}
-	backedS3Url      = ""
-	backedAccessKey  = ""
-	backedSecretKey  = ""
+	backendS3Url      = ""
+	backendAccessKey  = ""
+	backendSecretKey  = ""
 	brokerHost       = ""
 	brokerPort       = ""
 	brokerUsername   = ""
@@ -122,9 +122,9 @@ func main() {
 		}
 	}
 
-	backedS3Url = viper.Get("aws.url").(string)
-	backedAccessKey = viper.Get("aws.accessKey").(string)
-	backedSecretKey = viper.Get("aws.secretKey").(string)
+	backendS3Url = viper.Get("aws.url").(string)
+	backendAccessKey = viper.Get("aws.accessKey").(string)
+	backendSecretKey = viper.Get("aws.secretKey").(string)
 	brokerHost = viper.Get("broker.host").(string)
 	brokerPort = viper.Get("broker.port").(string)
 	brokerUsername = viper.Get("broker.user").(string)
@@ -382,7 +382,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost || r.Method == http.MethodPut {
 		r.URL.Path = "/" + bucket + r.URL.Path
 	}
-	resignHeader(r, backedAccessKey, backedSecretKey, backedS3Url)
+	resignHeader(r, backendAccessKey, backendSecretKey, backendS3Url)
 
 	cfg := new(tls.Config)
 
@@ -403,7 +403,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{Transport: tr}
 
 	// Redirect request
-	nr, err := http.NewRequest(r.Method, backedS3Url+r.URL.String(), r.Body)
+	nr, err := http.NewRequest(r.Method, backendS3Url+r.URL.String(), r.Body)
 	if err != nil {
 		fmt.Println(err)
 	}
