@@ -3,7 +3,7 @@ aws:
   accessKey: "ElexirID"
   secretKey: "987654321"
   bucket: "test"
-  region: ""
+  region: "us-east-1"
   cacert: "./dev_utils/certs/ca.crt"
 
 broker:

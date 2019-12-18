@@ -50,7 +50,7 @@ services:
       - AWS_ACCESSKEY=ElexirID
       - AWS_SECRETKEY=987654321
       - AWS_BUCKET=test
-      - AWS_REGION=
+      - AWS_REGION=us-east-1
       - BROKER_HOST=mq
       - BROKER_USER=test
       - BROKER_PASSWORD=test
