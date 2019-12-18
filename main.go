@@ -32,6 +32,7 @@ var (
 	backendS3Url      = ""
 	backendAccessKey  = ""
 	backendSecretKey  = ""
+    backendRegion     = ""
 	brokerHost       = ""
 	brokerPort       = ""
 	brokerUsername   = ""
@@ -125,6 +126,7 @@ func main() {
 	backendS3Url = viper.Get("aws.url").(string)
 	backendAccessKey = viper.Get("aws.accessKey").(string)
 	backendSecretKey = viper.Get("aws.secretKey").(string)
+    backendRegion = viper.Get("aws.region").(string)
 	brokerHost = viper.Get("broker.host").(string)
 	brokerPort = viper.Get("broker.port").(string)
 	brokerUsername = viper.Get("broker.user").(string)
@@ -247,7 +249,7 @@ func resignHeader(r *http.Request, accessKey string, secretKey string, backendUR
 		r.Host = host[1]
 	}
 
-	return s3signer.SignV4(*r, accessKey, secretKey, "", "us-east-1")
+	return s3signer.SignV4(*r, accessKey, secretKey, "", backendRegion)
 }
 
 func detectRequestType(r *http.Request) S3RequestType {
@@ -283,12 +285,19 @@ func detectRequestType(r *http.Request) S3RequestType {
 }
 
 // Extracts the signature from the authorization header
-func extractSignature(r *http.Request) string {
+func extractSignature(r *http.Request) (string, error) {
 
+    signature := ""
+    var err error
 	re := regexp.MustCompile("Signature=(.*)")
-	signature := re.FindStringSubmatch(r.Header.Get("Authorization"))[1]
+	
+    if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")) ; tmp != nil {
+        signature = tmp[1]
+    } else {
+        err = fmt.Errorf("signature not found")
+    }
 
-	return signature
+	return signature, err
 }
 
 // Authenticates the user against stored credentials
@@ -297,12 +306,24 @@ func extractSignature(r *http.Request) string {
 // 3) Compare the signatures between the requests and return authentication status
 func authenticateUser(r *http.Request) error {
 	re := regexp.MustCompile("Credential=([^/]+)/")
-	curAccessKey := re.FindStringSubmatch(r.Header.Get("Authorization"))[1]
+	curAccessKey := "" 
+    if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")) ; tmp != nil {
+        curAccessKey = tmp[1]
+    } else {
+        log.Println("User not found in signature")
+        err = fmt.Errorf("user not found in signature")
+        return err
+    }
 	if curSecretKey, ok := usersMap[curAccessKey]; ok {
 
 		if r.Method == http.MethodGet {
 
-			signature := extractSignature(r)
+			signature, err := extractSignature(r)
+            if err == nil {
+                log.Println("Singature not found")
+                err = fmt.Errorf("user signature not found")
+                return err
+            }
 			// Create signing request
 			nr, e := http.NewRequest(r.Method, r.URL.String(), r.Body)
 			if e != nil {
@@ -315,7 +336,12 @@ func authenticateUser(r *http.Request) error {
 			nr.URL.RawQuery = r.URL.RawQuery
 			// Sing the new request
 			resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
-			curSignature := extractSignature(nr)
+			curSignature, err := extractSignature(nr)
+            if err == nil {
+                log.Println("Singature not found")
+                err = fmt.Errorf("user signature not found")
+                return err
+            }
 			// Compare signatures
 			if curSignature != signature {
 				log.Println("User signature not authenticated ", curAccessKey)
