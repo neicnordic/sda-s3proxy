@@ -46,7 +46,7 @@ services:
       - s3_backend
     restart: always
     environment:
-      - AWS_URL=http://s3:9000
+      - AWS_URL=https://s3:9000
       - AWS_ACCESSKEY=ElexirID
       - AWS_SECRETKEY=987654321
       - AWS_BUCKET=test
@@ -62,13 +62,16 @@ services:
       - BROKER_CACERT=/certs/ca.crt
       - BROKER_CLIENTCERT=/certs/client.crt
       - BROKER_CLIENTKEY=/certs/client.key
+      - BROKER_VERIFYPEER=true
       - SERVER_CERT=/certs/proxy.crt
       - SERVER_KEY=/certs/proxy.key
+      - SERVER_USERS=users.csv
     volumes:
       - ./certs/ca.crt:/certs/ca.crt
       - ./certs/client.crt:/certs/client.crt
       - ./certs/client.key:/certs/client.key
       - ./certs/proxy.crt:/certs/proxy.crt
       - ./certs/proxy.key:/certs/proxy.key
+      - ./users.csv:/users.csv
     ports:
       - "8000:8000"

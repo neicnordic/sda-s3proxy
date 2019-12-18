@@ -4,7 +4,7 @@ aws:
   secretKey: "987654321"
   bucket: "test"
   region: ""
-  cacert: "./dummy/certs/ca.crt"
+  cacert: "./dev_utils/certs/ca.crt"
 
 broker:
   host: "localhost"
@@ -16,14 +16,14 @@ broker:
   routingKey: "files.inbox"
   ssl: "true"
   verifyPeer: "true"
-  cacert: "./dummy/certs/ca.crt"
-  clientCert: "./dummy/certs/client.crt"
-  clientKey: "./dummy/certs/client.key"
+  cacert: "./dev_utils/certs/ca.crt"
+  clientCert: "./dev_utils/certs/client.crt"
+  clientKey: "./dev_utils/certs/client.key"
 # If the FQDN and hostname of the broker differ
 # serverName can be set to the SAN name in the certificate
   #  serverName: ""
 
 server:
-  cert: "./dummy/certs/proxy.crt"
-  key: "./dummy/certs/proxy.key"
-  users: "./dummy/users.csv"
+  cert: "./dev_utils/certs/proxy.crt"
+  key: "./dev_utils/certs/proxy.key"
+  users: "./dev_utils/users.csv"
