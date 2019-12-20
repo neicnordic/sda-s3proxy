@@ -15,10 +15,23 @@ services:
     ports:
       - "9000:9000"
     volumes:
-      - /tmp/data:/data
       - ./certs/ca.crt:/root/.minio/certs/CAs/public.crt
       - ./certs/s3.crt:/root/.minio/certs/public.crt
       - ./certs/s3.key:/root/.minio/certs/private.key
+  createbucket:
+    container_name: buckets
+    image: minio/mc
+    depends_on:
+      - s3_backend
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add s3 https://s3:9000 ElexirID 987654321;
+      /usr/bin/mc rm -r --force s3/test;
+      /usr/bin/mc mb s3/test;
+      exit 0;
+      "
+    volumes:
+      - ./certs/ca.crt:/etc/ssl/certs/public.crt
   mq_server:
     container_name: mq
     image: rabbitmq:3.7.8-management-alpine
