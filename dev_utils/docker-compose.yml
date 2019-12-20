@@ -51,6 +51,7 @@ services:
       - AWS_SECRETKEY=987654321
       - AWS_BUCKET=test
       - AWS_REGION=us-east-1
+      - AWS_READYPATH=/minio/health/ready
       - BROKER_HOST=mq
       - BROKER_USER=test
       - BROKER_PASSWORD=test
@@ -75,3 +76,4 @@ services:
       - ./users.csv:/users.csv
     ports:
       - "8000:8000"
+      - "8001:8001"
