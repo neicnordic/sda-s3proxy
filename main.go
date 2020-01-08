@@ -339,11 +339,11 @@ func authenticateUser(r *http.Request) error {
 
 			// Sign the new request
 			resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
-			curSignature, err := extractSignature(nr)
-			if err != nil {
+			curSignature, e := extractSignature(nr)
+			if e != nil {
 				log.Println("Singature not found")
-				err = fmt.Errorf("user signature not found")
-				return err
+				e = fmt.Errorf("user signature not found")
+				return e
 			}
 			// Compare signatures
 			if curSignature != signature {
