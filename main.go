@@ -321,7 +321,7 @@ func authenticateUser(r *http.Request) error {
 	if curSecretKey, ok := usersMap[curAccessKey]; ok {
 		if r.Method == http.MethodGet {
 			signature, e := extractSignature(r)
-            if err != nil {
+            if e != nil {
                 log.Println("Singature not found")
                 e = fmt.Errorf("user signature not found")
                 return e
