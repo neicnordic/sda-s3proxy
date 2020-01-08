@@ -288,7 +288,6 @@ func detectRequestType(r *http.Request) S3RequestType {
 func extractSignature(r *http.Request) (string, error) {
 
     signature := ""
-    var err error
 	re := regexp.MustCompile("Signature=(.*)")
     if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")) ; tmp != nil {
         signature = tmp[1]
@@ -307,10 +306,10 @@ func authenticateUser(r *http.Request) error {
 	re := regexp.MustCompile("Credential=([^/]+)/")
 	curAccessKey := "" 
     if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")) ; tmp != nil {
+        // Check if user requested own bucket
         curAccessKey = tmp[1]
         re := regexp.MustCompile("/([^/]+)/")
         if curAccessKey != re.FindStringSubmatch(r.URL.Path)[1] {
-            log.Println("User not authorized")
             err = fmt.Errorf("user not authorized to access location")
             return err    
         }
@@ -320,14 +319,12 @@ func authenticateUser(r *http.Request) error {
         return err
     }
 	if curSecretKey, ok := usersMap[curAccessKey]; ok {
-
 		if r.Method == http.MethodGet {
-
-			signature, err := extractSignature(r)
+			signature, e := extractSignature(r)
             if err != nil {
                 log.Println("Singature not found")
-                err = fmt.Errorf("user signature not found")
-                return err
+                e = fmt.Errorf("user signature not found")
+                return e
             }
 			// Create signing request
 			nr, e := http.NewRequest(r.Method, r.URL.String(), r.Body)
@@ -339,7 +336,8 @@ func authenticateUser(r *http.Request) error {
 			nr.Header.Set("X-Amz-Content-Sha256", r.Header.Get("X-Amz-Content-Sha256"))
 			nr.Host = r.Host
 			nr.URL.RawQuery = r.URL.RawQuery
-			// Sing the new request
+
+			// Sign the new request
 			resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
 			curSignature, err := extractSignature(nr)
             if err != nil {
@@ -395,6 +393,7 @@ func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
 func allowedResponse(w http.ResponseWriter, r *http.Request) {
 
     if err := authenticateUser(r); err != nil {
+        fmt.Println(err)
         notAuthorized(w, r)
         return
     }
