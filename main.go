@@ -29,10 +29,10 @@ var (
 		"aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket", "broker.host", "broker.port", "broker.user",
 		"broker.password", "broker.vhost", "broker.exchange", "broker.routingKey", "broker.ssl", "server.users",
 	}
-	backendS3Url      = ""
-	backendAccessKey  = ""
-	backendSecretKey  = ""
-    backendRegion     = ""
+	backendS3Url     = ""
+	backendAccessKey = ""
+	backendSecretKey = ""
+	backendRegion    = ""
 	brokerHost       = ""
 	brokerPort       = ""
 	brokerUsername   = ""
@@ -126,7 +126,7 @@ func main() {
 	backendS3Url = viper.Get("aws.url").(string)
 	backendAccessKey = viper.Get("aws.accessKey").(string)
 	backendSecretKey = viper.Get("aws.secretKey").(string)
-    backendRegion = viper.Get("aws.region").(string)
+	backendRegion = viper.Get("aws.region").(string)
 	brokerHost = viper.Get("broker.host").(string)
 	brokerPort = viper.Get("broker.port").(string)
 	brokerUsername = viper.Get("broker.user").(string)
@@ -287,13 +287,13 @@ func detectRequestType(r *http.Request) S3RequestType {
 // Extracts the signature from the authorization header
 func extractSignature(r *http.Request) (string, error) {
 
-    signature := ""
+	signature := ""
 	re := regexp.MustCompile("Signature=(.*)")
-    if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")) ; tmp != nil {
-        signature = tmp[1]
-    } else {
-        err = fmt.Errorf("signature not found")
-    }
+	if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")); tmp != nil {
+		signature = tmp[1]
+	} else {
+		err = fmt.Errorf("signature not found")
+	}
 
 	return signature, err
 }
@@ -304,28 +304,28 @@ func extractSignature(r *http.Request) (string, error) {
 // 3) Compare the signatures between the requests and return authentication status
 func authenticateUser(r *http.Request) error {
 	re := regexp.MustCompile("Credential=([^/]+)/")
-	curAccessKey := "" 
-    if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")) ; tmp != nil {
-        // Check if user requested own bucket
-        curAccessKey = tmp[1]
-        re := regexp.MustCompile("/([^/]+)/")
-        if curAccessKey != re.FindStringSubmatch(r.URL.Path)[1] {
-            err = fmt.Errorf("user not authorized to access location")
-            return err    
-        }
-    } else {
-        log.Println("User not found in signature")
-        err = fmt.Errorf("user not found in signature")
-        return err
-    }
+	curAccessKey := ""
+	if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")); tmp != nil {
+		// Check if user requested own bucket
+		curAccessKey = tmp[1]
+		re := regexp.MustCompile("/([^/]+)/")
+		if curAccessKey != re.FindStringSubmatch(r.URL.Path)[1] {
+			err = fmt.Errorf("user not authorized to access location")
+			return err
+		}
+	} else {
+		log.Println("User not found in signature")
+		err = fmt.Errorf("user not found in signature")
+		return err
+	}
 	if curSecretKey, ok := usersMap[curAccessKey]; ok {
 		if r.Method == http.MethodGet {
 			signature, e := extractSignature(r)
-            if e != nil {
-                log.Println("Singature not found")
-                e = fmt.Errorf("user signature not found")
-                return e
-            }
+			if e != nil {
+				log.Println("Singature not found")
+				e = fmt.Errorf("user signature not found")
+				return e
+			}
 			// Create signing request
 			nr, e := http.NewRequest(r.Method, r.URL.String(), r.Body)
 			if e != nil {
@@ -340,11 +340,11 @@ func authenticateUser(r *http.Request) error {
 			// Sign the new request
 			resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
 			curSignature, err := extractSignature(nr)
-            if err != nil {
-                log.Println("Singature not found")
-                err = fmt.Errorf("user signature not found")
-                return err
-            }
+			if err != nil {
+				log.Println("Singature not found")
+				err = fmt.Errorf("user signature not found")
+				return err
+			}
 			// Compare signatures
 			if curSignature != signature {
 				log.Println("User signature not authenticated ", curAccessKey)
@@ -392,11 +392,11 @@ func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
 
 func allowedResponse(w http.ResponseWriter, r *http.Request) {
 
-    if err := authenticateUser(r); err != nil {
-        fmt.Println(err)
-        notAuthorized(w, r)
-        return
-    }
+	if err := authenticateUser(r); err != nil {
+		fmt.Println(err)
+		notAuthorized(w, r)
+		return
+	}
 
 	bucket := viper.Get("aws.bucket").(string)
 	re := regexp.MustCompile("/([^/]+)/")
