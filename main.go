@@ -86,6 +86,40 @@ const (
 )
 
 func main() {
+	initialization()
+	connection := brokerConnection()
+	AmqpChannel, err = mq.Channel(connection)
+	if err != nil {
+		panic(fmt.Errorf("BrokerErrMsg: %s", err))
+	}
+
+	err = mq.Exchange(AmqpChannel, brokerExchange)
+	if err != nil {
+		panic(fmt.Errorf("BrokerErrMsg: %s", err))
+	}
+
+	logHandle, _ = os.Create("_requestLog.dump")
+	usersMap = readUsersFile()
+
+	http.HandleFunc("/", handler)
+
+	if viper.Get("server.Cert") != nil && viper.Get("server.Key") != nil && viper.Get("server.Cert").(string) != "" && viper.Get("server.Key").(string) != "" {
+		if e := http.ListenAndServeTLS(":8000", viper.Get("server.Cert").(string), viper.Get("server.Key").(string), nil); e != nil {
+			panic(e)
+		}
+	} else {
+		if e := http.ListenAndServe(":8000", nil); e != nil {
+			panic(e)
+		}
+	}
+
+	defer AmqpChannel.Close()
+	defer connection.Close()
+
+}
+
+// Initializes variables
+func initialization() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
 	viper.AutomaticEnv()
@@ -136,14 +170,18 @@ func main() {
 	brokerRoutingKey = viper.Get("broker.routingKey").(string)
 	brokerSsl = viper.Get("broker.ssl").(string)
 
-	brokerURI := mq.BuildMqURI(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
-
-	var connection *amqp.Connection
-
 	if SystemCAs == nil {
 		fmt.Println("creating new CApool")
 		SystemCAs = x509.NewCertPool()
 	}
+}
+
+// Creates the connection to the broker
+func brokerConnection() *amqp.Connection {
+
+	brokerURI := mq.BuildMqURI(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
+
+	var connection *amqp.Connection
 
 	if brokerSsl == "true" {
 		cfg := new(tls.Config)
@@ -193,36 +231,7 @@ func main() {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
 		}
 	}
-
-	AmqpChannel, err = mq.Channel(connection)
-	if err != nil {
-		panic(fmt.Errorf("BrokerErrMsg: %s", err))
-	}
-
-	err = mq.Exchange(AmqpChannel, brokerExchange)
-	if err != nil {
-		panic(fmt.Errorf("BrokerErrMsg: %s", err))
-	}
-
-	logHandle, _ = os.Create("_requestLog.dump")
-
-	usersMap = readUsersFile()
-
-	http.HandleFunc("/", handler)
-
-	if viper.Get("server.Cert") != nil && viper.Get("server.Key") != nil && viper.Get("server.Cert").(string) != "" && viper.Get("server.Key").(string) != "" {
-		if e := http.ListenAndServeTLS(":8000", viper.Get("server.Cert").(string), viper.Get("server.Key").(string), nil); e != nil {
-			panic(e)
-		}
-	} else {
-		if e := http.ListenAndServe(":8000", nil); e != nil {
-			panic(e)
-		}
-	}
-
-	defer AmqpChannel.Close()
-	defer connection.Close()
-
+	return connection
 }
 
 //Function for reading users mock file into a dictionary
@@ -256,6 +265,7 @@ func resignHeader(r *http.Request, accessKey string, secretKey string, backendUR
 	return s3signer.SignV4(*r, accessKey, secretKey, "", backendRegion)
 }
 
+// Identifies the type of request based on the method and the url path
 func detectRequestType(r *http.Request) S3RequestType {
 	switch r.Method {
 	case http.MethodGet:
@@ -347,12 +357,14 @@ func authenticateUser(r *http.Request) error {
 			if e != nil {
 				log.Println("Singature not found")
 				e = fmt.Errorf("user signature not found")
+				fmt.Println("1", e)
 				return e
 			}
 			// Compare signatures
 			if curSignature != signature {
 				log.Println("User signature not authenticated ", curAccessKey)
 				err = fmt.Errorf("user signature not authenticated")
+				fmt.Println("2", err)
 				return err
 			}
 		}
@@ -468,8 +480,18 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Send message to RabbitMQ if the upload is finished
-	// TODO: Use the actual username in both cases and size, checksum for multipart upload
+	sendMessage(nr, r, response, contentLength)
+
+	// Redirect answer
+	_, err = io.Copy(w, response.Body)
+	if err != nil {
+		log.Fatalln("redirect error")
+	}
+}
+
+// Sends message to RabbitMQ if the upload is finished
+// TODO: Use the actual username in both cases and size, checksum for multipart upload
+func sendMessage(nr *http.Request, r *http.Request, response *http.Response, contentLength int64) {
 	if (nr.Method == http.MethodPut && response.StatusCode == 200 && !strings.Contains(nr.URL.String(), "partNumber")) ||
 		(nr.Method == http.MethodPost && response.StatusCode == 200 && strings.Contains(nr.URL.String(), "uploadId")) {
 		event := Event{}
@@ -498,11 +520,5 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 		if e := mq.Publish(brokerExchange, brokerRoutingKey, string(body), true, AmqpChannel); e != nil {
 			log.Fatalf("%s", e)
 		}
-	}
-
-	// Redirect answer
-	_, err = io.Copy(w, response.Body)
-	if err != nil {
-		log.Fatalln("redirect error")
 	}
 }
