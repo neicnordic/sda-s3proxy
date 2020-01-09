@@ -225,6 +225,7 @@ func main() {
 
 }
 
+//Function for reading users mock file into a dictionary
 func readUsersFile() map[string]string {
 	users := make(map[string]string)
 	f, e := os.Open(viper.Get("server.users").(string))
@@ -243,6 +244,9 @@ func readUsersFile() map[string]string {
 	return users
 }
 
+// Function for signing the headers of the s3 requests
+// Used for for creating a signature for with the default
+// credentials of the s3 service and the user's signature (authentication)
 func resignHeader(r *http.Request, accessKey string, secretKey string, backendURL string) *http.Request {
 	if strings.Contains(backendURL, "//") {
 		host := strings.SplitN(backendURL, "//", 2)
@@ -398,10 +402,12 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extract username for request's url path
 	bucket := viper.Get("aws.bucket").(string)
 	re := regexp.MustCompile("/([^/]+)/")
 	username = re.FindStringSubmatch(r.URL.Path)[1]
 
+	// Restructure request to query the users folder instead of the general bucket
 	if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?delimiter") {
 		r.URL.Path = "/" + bucket + "/"
 		if strings.Contains(r.URL.RawQuery, "&prefix") {
