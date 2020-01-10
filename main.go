@@ -28,8 +28,7 @@ var (
 		"aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket", "broker.host", "broker.port", "broker.user",
 		"broker.password", "broker.vhost", "broker.exchange", "broker.routingKey", "broker.ssl", "server.users",
 	}
-	usersMap map[string]string
-	err      error
+	err error
 )
 
 var logHandle *os.File
@@ -85,7 +84,6 @@ func main() {
 	}
 
 	logHandle, _ = os.Create("_requestLog.dump")
-	usersMap = readUsersFile()
 
 	http.HandleFunc("/", handler)
 
@@ -309,6 +307,7 @@ func authenticateUser(r *http.Request) error {
 		err = fmt.Errorf("user not found in signature")
 		return err
 	}
+	usersMap := readUsersFile()
 	if curSecretKey, ok := usersMap[curAccessKey]; ok {
 		if r.Method == http.MethodGet {
 			signature, e := extractSignature(r)
