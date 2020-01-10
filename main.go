@@ -307,7 +307,7 @@ func extractSignature(r *http.Request) (string, error) {
 	if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")); tmp != nil {
 		signature = tmp[1]
 	} else {
-		err = fmt.Errorf("signature not found")
+		err = fmt.Errorf("user signature not found")
 	}
 
 	return signature, err
@@ -338,7 +338,6 @@ func authenticateUser(r *http.Request) error {
 			signature, e := extractSignature(r)
 			if e != nil {
 				log.Println("Singature not found")
-				e = fmt.Errorf("user signature not found")
 				return e
 			}
 			// Create signing request
