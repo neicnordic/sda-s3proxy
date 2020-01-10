@@ -28,9 +28,6 @@ var (
 		"aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket", "broker.host", "broker.port", "broker.user",
 		"broker.password", "broker.vhost", "broker.exchange", "broker.routingKey", "broker.ssl", "server.users",
 	}
-	backendS3Url     = ""
-	backendAccessKey = ""
-	backendSecretKey = ""
 	usersMap         map[string]string
 	err              error
 )
@@ -145,10 +142,6 @@ func initialization() {
 			panic(fmt.Errorf("fatal error config file: %s", err))
 		}
 	}
-
-	backendS3Url = viper.Get("aws.url").(string)
-	backendAccessKey = viper.Get("aws.accessKey").(string)
-	backendSecretKey = viper.Get("aws.secretKey").(string)
 
 	if SystemCAs == nil {
 		fmt.Println("creating new CApool")
@@ -416,7 +409,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost || r.Method == http.MethodPut {
 		r.URL.Path = "/" + bucket + r.URL.Path
 	}
-	resignHeader(r, backendAccessKey, backendSecretKey, backendS3Url)
+	resignHeader(r, viper.Get("aws.accessKey").(string), viper.Get("aws.secretKey").(string), viper.Get("aws.url").(string))
 
 	cfg := new(tls.Config)
 
@@ -437,7 +430,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{Transport: tr}
 
 	// Redirect request
-	nr, err := http.NewRequest(r.Method, backendS3Url+r.URL.String(), r.Body)
+	nr, err := http.NewRequest(r.Method, viper.Get("aws.url").(string)+r.URL.String(), r.Body)
 	if err != nil {
 		fmt.Println(err)
 	}
