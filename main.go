@@ -145,7 +145,7 @@ func initialization() {
 					panic(fmt.Errorf("%s not set", s))
 				}
 			}
-			if viper.Get("broker.ssl") == "true" {
+			if strings.EqualFold(viper.Get("broker.ssl").(string), "true") {
 				if viper.Get("broker.caCert") == nil {
 					panic(fmt.Errorf("broker.caCert not set"))
 				}
@@ -181,7 +181,7 @@ func brokerConnection() *amqp.Connection {
 
 	var connection *amqp.Connection
 
-	if brokerSsl == "true" {
+	if strings.EqualFold(viper.Get("broker.ssl").(string), "true") {
 		cfg := new(tls.Config)
 
 		// Enforce TLS1.2 or higher
@@ -203,7 +203,7 @@ func brokerConnection() *amqp.Connection {
 			}
 		}
 
-		if viper.Get("broker.verifyPeer") != nil && viper.Get("broker.verifyPeer") == "true" {
+		if viper.Get("broker.verifyPeer") != nil && strings.EqualFold(viper.Get("broker.verifyPeer").(string), "true") {
 			if viper.Get("broker.clientCert") != nil && viper.Get("broker.clientKey") != nil {
 				cert, e := ioutil.ReadFile(viper.Get("broker.clientCert").(string))
 				if e != nil {
