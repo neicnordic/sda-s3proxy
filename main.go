@@ -302,6 +302,7 @@ func detectRequestType(r *http.Request) S3RequestType {
 func extractSignature(r *http.Request) (string, error) {
 
 	signature := ""
+	err = nil
 	re := regexp.MustCompile("Signature=(.*)")
 	if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")); tmp != nil {
 		signature = tmp[1]
