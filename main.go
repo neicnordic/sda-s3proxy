@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/NBISweden/S3-Upload-Proxy/mq"
 	"github.com/minio/minio-go/v6/pkg/s3signer"
 	"github.com/spf13/viper"
 	"github.com/streadway/amqp"
@@ -88,12 +87,12 @@ const (
 func main() {
 	initialization()
 	connection := brokerConnection()
-	AmqpChannel, err = mq.Channel(connection)
+	AmqpChannel, err = Channel(connection)
 	if err != nil {
 		panic(fmt.Errorf("BrokerErrMsg: %s", err))
 	}
 
-	err = mq.Exchange(AmqpChannel, brokerExchange)
+	err = Exchange(AmqpChannel, brokerExchange)
 	if err != nil {
 		panic(fmt.Errorf("BrokerErrMsg: %s", err))
 	}
@@ -179,7 +178,7 @@ func initialization() {
 // Creates the connection to the broker
 func brokerConnection() *amqp.Connection {
 
-	brokerURI := mq.BuildMqURI(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
+	brokerURI := BuildMqURI(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
 
 	var connection *amqp.Connection
 
@@ -221,12 +220,12 @@ func brokerConnection() *amqp.Connection {
 			}
 		}
 
-		connection, err = mq.DialTLS(brokerURI, cfg)
+		connection, err = DialTLS(brokerURI, cfg)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
 		}
 	} else {
-		connection, err = mq.Dial(brokerURI)
+		connection, err = Dial(brokerURI)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
 		}
@@ -517,7 +516,7 @@ func sendMessage(nr *http.Request, r *http.Request, response *http.Response, con
 		if e != nil {
 			log.Fatalf("%s", e)
 		}
-		if e := mq.Publish(brokerExchange, brokerRoutingKey, string(body), true, AmqpChannel); e != nil {
+		if e := Publish(brokerExchange, brokerRoutingKey, string(body), true, AmqpChannel); e != nil {
 			log.Fatalf("%s", e)
 		}
 	}

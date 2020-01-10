@@ -1,4 +1,4 @@
-package mq
+package main
 
 import (
 	"crypto/tls"
