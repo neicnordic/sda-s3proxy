@@ -78,7 +78,7 @@ func main() {
 		panic(fmt.Errorf("BrokerErrMsg: %s", err))
 	}
 
-	err = Exchange(AmqpChannel, viper.Get("broker.exchange").(string))
+	err = Exchange(AmqpChannel, viper.GetString("broker.exchange"))
 	if err != nil {
 		panic(fmt.Errorf("BrokerErrMsg: %s", err))
 	}
@@ -89,8 +89,8 @@ func main() {
 
 	go healthchecks()
 
-	if viper.Get("server.Cert") != nil && viper.Get("server.Key") != nil && viper.Get("server.Cert").(string) != "" && viper.Get("server.Key").(string) != "" {
-		if e := http.ListenAndServeTLS(":8000", viper.Get("server.Cert").(string), viper.Get("server.Key").(string), nil); e != nil {
+	if viper.IsSet("server.Cert") && viper.IsSet("server.Key") && viper.IsSet("server.Cert") && viper.IsSet("server.Key") {
+		if e := http.ListenAndServeTLS(":8000", viper.GetString("server.Cert"), viper.GetString("server.Key"), nil); e != nil {
 			panic(e)
 		}
 	} else {
@@ -111,30 +111,30 @@ func initialization() {
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.SetConfigType("yaml")
-	if viper.Get("server.confPath") != nil {
-		cp := viper.Get("server.confPath").(string)
+	if viper.IsSet("server.confPath") {
+		cp := viper.GetString("server.confPath")
 		ss := strings.Split(strings.TrimLeft(cp, "/"), "/")
 		if ss[0] != "config" {
 			ss = ss[:len(ss)-1]
 		}
 		viper.AddConfigPath(path.Join(ss...))
 	}
-	if viper.Get("server.confFile") != nil {
-		ss := strings.Split(viper.Get("server.confFile").(string), ".")
+	if viper.IsSet("server.confFile") {
+		ss := strings.Split(viper.GetString("server.confFile"), ".")
 		if ss[len(ss)-1] == "yml" || ss[len(ss)-1] == "yaml" {
-			viper.SetConfigFile(viper.Get("server.confFile").(string))
+			viper.SetConfigFile(viper.GetString("server.confFile"))
 		}
 	}
 	if err = viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Config file not found; ignore error if desired
 			for _, s := range confVars {
-				if viper.Get(s) == nil {
+				if !viper.IsSet(s) {
 					panic(fmt.Errorf("%s not set", s))
 				}
 			}
-			if strings.EqualFold(viper.Get("broker.ssl").(string), "true") {
-				if viper.Get("broker.caCert") == nil {
+			if viper.GetBool("broker.ssl") {
+				if !viper.IsSet("broker.caCert") {
 					panic(fmt.Errorf("broker.caCert not set"))
 				}
 			}
@@ -152,11 +152,11 @@ func initialization() {
 // Creates the connection to the broker
 func brokerConnection() *amqp.Connection {
 
-	brokerURI := BuildMqURI(viper.Get("broker.host").(string), viper.Get("broker.port").(string), viper.Get("broker.user").(string), viper.Get("broker.password").(string), viper.Get("broker.vhost").(string), viper.Get("broker.ssl").(string))
+	brokerURI := BuildMqURI(viper.GetString("broker.host"), viper.GetString("broker.port"), viper.GetString("broker.user"), viper.GetString("broker.password"), viper.GetString("broker.vhost"), viper.GetString("broker.ssl"))
 
 	var connection *amqp.Connection
 
-	if strings.EqualFold(viper.Get("broker.ssl").(string), "true") {
+	if viper.GetBool("broker.ssl") {
 		cfg := new(tls.Config)
 
 		// Enforce TLS1.2 or higher
@@ -164,12 +164,12 @@ func brokerConnection() *amqp.Connection {
 
 		cfg.RootCAs = SystemCAs
 
-		if viper.Get("broker.serverName") != nil {
-			cfg.ServerName = viper.Get("broker.serverName").(string)
+		if viper.IsSet("broker.serverName") {
+			cfg.ServerName = viper.GetString("broker.serverName")
 		}
 
-		if viper.Get("broker.caCert") != nil {
-			cacert, e := ioutil.ReadFile(viper.Get("broker.cacert").(string))
+		if viper.IsSet("broker.caCert") {
+			cacert, e := ioutil.ReadFile(viper.GetString("broker.cacert"))
 			if e != nil {
 				log.Fatalf("Failed to append %q to RootCAs: %v", cacert, e)
 			}
@@ -178,13 +178,13 @@ func brokerConnection() *amqp.Connection {
 			}
 		}
 
-		if viper.Get("broker.verifyPeer") != nil && strings.EqualFold(viper.Get("broker.verifyPeer").(string), "true") {
-			if viper.Get("broker.clientCert") != nil && viper.Get("broker.clientKey") != nil {
-				cert, e := ioutil.ReadFile(viper.Get("broker.clientCert").(string))
+		if viper.IsSet("broker.verifyPeer") && viper.GetBool("broker.verifyPeer") {
+			if viper.IsSet("broker.clientCert") && viper.IsSet("broker.clientKey") {
+				cert, e := ioutil.ReadFile(viper.GetString("broker.clientCert"))
 				if e != nil {
 					log.Fatalf("Failed to append %q to RootCAs: %v", cert, e)
 				}
-				key, e := ioutil.ReadFile(viper.Get("broker.clientKey").(string))
+				key, e := ioutil.ReadFile(viper.GetString("broker.clientKey"))
 				if e != nil {
 					log.Fatalf("Failed to append %q to RootCAs: %v", key, e)
 				}
@@ -210,7 +210,7 @@ func brokerConnection() *amqp.Connection {
 //Function for reading users mock file into a dictionary
 func readUsersFile() map[string]string {
 	users := make(map[string]string)
-	f, e := os.Open(viper.Get("server.users").(string))
+	f, e := os.Open(viper.GetString("server.users"))
 	if e != nil {
 		panic(fmt.Errorf("UsersFileErrMsg: %s", e))
 	}
@@ -235,8 +235,8 @@ func resignHeader(r *http.Request, accessKey string, secretKey string, backendUR
 		r.Host = host[1]
 	}
 	backendRegion := "us-east-1"
-	if viper.Get("aws.region") != nil && viper.Get("aws.region").(string) != "" {
-		backendRegion = viper.Get("aws.region").(string)
+	if viper.IsSet("aws.region") && viper.IsSet("aws.region") {
+		backendRegion = viper.GetString("aws.region")
 	}
 	return s3signer.SignV4(*r, accessKey, secretKey, "", backendRegion)
 }
@@ -392,7 +392,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Extract username for request's url path
-	bucket := viper.Get("aws.bucket").(string)
+	bucket := viper.GetString("aws.bucket")
 	re := regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 
@@ -410,14 +410,14 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost || r.Method == http.MethodPut {
 		r.URL.Path = "/" + bucket + r.URL.Path
 	}
-	resignHeader(r, viper.Get("aws.accessKey").(string), viper.Get("aws.secretKey").(string), viper.Get("aws.url").(string))
+	resignHeader(r, viper.GetString("aws.accessKey"), viper.GetString("aws.secretKey"), viper.GetString("aws.url"))
 
 	cfg := new(tls.Config)
 
 	cfg.RootCAs = SystemCAs
 
-	if viper.Get("aws.cacert") != nil {
-		cacert, err := ioutil.ReadFile(viper.Get("aws.cacert").(string))
+	if viper.IsSet("aws.cacert") {
+		cacert, err := ioutil.ReadFile(viper.GetString("aws.cacert"))
 		if err != nil {
 			log.Fatalf("Failed to append %q to RootCAs: %v", cacert, err)
 		}
@@ -431,7 +431,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{Transport: tr}
 
 	// Redirect request
-	nr, err := http.NewRequest(r.Method, viper.Get("aws.url").(string)+r.URL.String(), r.Body)
+	nr, err := http.NewRequest(r.Method, viper.GetString("aws.url")+r.URL.String(), r.Body)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -494,7 +494,7 @@ func sendMessage(nr *http.Request, r *http.Request, response *http.Response, con
 		if e != nil {
 			log.Fatalf("%s", e)
 		}
-		if e := Publish(viper.Get("broker.exchange").(string), viper.Get("broker.routingKey").(string), string(body), true, AmqpChannel); e != nil {
+		if e := Publish(viper.GetString("broker.exchange"), viper.GetString("broker.routingKey"), string(body), true, AmqpChannel); e != nil {
 			log.Fatalf("%s", e)
 		}
 	}

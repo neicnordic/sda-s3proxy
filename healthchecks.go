@@ -15,13 +15,13 @@ func healthchecks() {
 
 	health.AddLivenessCheck("goroutine-threshold", healthcheck.GoroutineCountCheck(10))
 
-	upstreamURL := viper.Get("aws.url").(string)
-	if viper.Get("aws.readypath") != nil && viper.Get("aws.readypath").(string) != "" {
-		upstreamURL = viper.Get("aws.url").(string) + viper.Get("aws.readypath").(string)
+	upstreamURL := viper.GetString("aws.url")
+	if viper.IsSet("aws.readypath") && viper.IsSet("aws.readypath") {
+		upstreamURL = viper.GetString("aws.url") + viper.GetString("aws.readypath")
 	}
 	health.AddReadinessCheck("S3-backend-http", httpsGetCheck(upstreamURL, 5000*time.Millisecond))
 
-	brokerURL := viper.Get("broker.host").(string) + ":" + viper.Get("broker.port").(string)
+	brokerURL := viper.GetString("broker.host") + ":" + viper.GetString("broker.port")
 	health.AddReadinessCheck(
 		"broker-tcp",
 		healthcheck.TCPDialCheck(brokerURL, 50*time.Millisecond))
