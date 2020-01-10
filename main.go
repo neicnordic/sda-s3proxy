@@ -28,8 +28,8 @@ var (
 		"aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket", "broker.host", "broker.port", "broker.user",
 		"broker.password", "broker.vhost", "broker.exchange", "broker.routingKey", "broker.ssl", "server.users",
 	}
-	usersMap         map[string]string
-	err              error
+	usersMap map[string]string
+	err      error
 )
 
 var logHandle *os.File
