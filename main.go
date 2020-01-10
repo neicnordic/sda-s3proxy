@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/NBISweden/S3-Upload-Proxy/mq"
 	"github.com/minio/minio-go/v6/pkg/s3signer"
 	"github.com/spf13/viper"
 	"github.com/streadway/amqp"
@@ -29,20 +28,7 @@ var (
 		"aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket", "broker.host", "broker.port", "broker.user",
 		"broker.password", "broker.vhost", "broker.exchange", "broker.routingKey", "broker.ssl", "server.users",
 	}
-	backedS3Url      = ""
-	backedAccessKey  = ""
-	backedSecretKey  = ""
-	brokerHost       = ""
-	brokerPort       = ""
-	brokerUsername   = ""
-	brokerPassword   = ""
-	brokerVhost      = ""
-	brokerExchange   = ""
-	brokerSsl        = ""
-	brokerRoutingKey = ""
-	username         string
-	usersMap         map[string]string
-	err              error
+	err error
 )
 
 var logHandle *os.File
@@ -85,6 +71,39 @@ const (
 )
 
 func main() {
+	initialization()
+	connection := brokerConnection()
+	AmqpChannel, err = Channel(connection)
+	if err != nil {
+		panic(fmt.Errorf("BrokerErrMsg: %s", err))
+	}
+
+	err = Exchange(AmqpChannel, viper.Get("broker.exchange").(string))
+	if err != nil {
+		panic(fmt.Errorf("BrokerErrMsg: %s", err))
+	}
+
+	logHandle, _ = os.Create("_requestLog.dump")
+
+	http.HandleFunc("/", handler)
+
+	if viper.Get("server.Cert") != nil && viper.Get("server.Key") != nil && viper.Get("server.Cert").(string) != "" && viper.Get("server.Key").(string) != "" {
+		if e := http.ListenAndServeTLS(":8000", viper.Get("server.Cert").(string), viper.Get("server.Key").(string), nil); e != nil {
+			panic(e)
+		}
+	} else {
+		if e := http.ListenAndServe(":8000", nil); e != nil {
+			panic(e)
+		}
+	}
+
+	defer AmqpChannel.Close()
+	defer connection.Close()
+
+}
+
+// Initializes variables
+func initialization() {
 	viper.SetConfigName("config")
 	viper.AddConfigPath(".")
 	viper.AutomaticEnv()
@@ -112,7 +131,7 @@ func main() {
 					panic(fmt.Errorf("%s not set", s))
 				}
 			}
-			if viper.Get("broker.ssl") == "true" {
+			if strings.EqualFold(viper.Get("broker.ssl").(string), "true") {
 				if viper.Get("broker.caCert") == nil {
 					panic(fmt.Errorf("broker.caCert not set"))
 				}
@@ -122,28 +141,20 @@ func main() {
 		}
 	}
 
-	backedS3Url = viper.Get("aws.url").(string)
-	backedAccessKey = viper.Get("aws.accessKey").(string)
-	backedSecretKey = viper.Get("aws.secretKey").(string)
-	brokerHost = viper.Get("broker.host").(string)
-	brokerPort = viper.Get("broker.port").(string)
-	brokerUsername = viper.Get("broker.user").(string)
-	brokerPassword = viper.Get("broker.password").(string)
-	brokerVhost = viper.Get("broker.vhost").(string)
-	brokerExchange = viper.Get("broker.exchange").(string)
-	brokerRoutingKey = viper.Get("broker.routingKey").(string)
-	brokerSsl = viper.Get("broker.ssl").(string)
-
-	brokerURI := mq.BuildMqURI(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
-
-	var connection *amqp.Connection
-
 	if SystemCAs == nil {
 		fmt.Println("creating new CApool")
 		SystemCAs = x509.NewCertPool()
 	}
+}
 
-	if brokerSsl == "true" {
+// Creates the connection to the broker
+func brokerConnection() *amqp.Connection {
+
+	brokerURI := BuildMqURI(viper.Get("broker.host").(string), viper.Get("broker.port").(string), viper.Get("broker.user").(string), viper.Get("broker.password").(string), viper.Get("broker.vhost").(string), viper.Get("broker.ssl").(string))
+
+	var connection *amqp.Connection
+
+	if strings.EqualFold(viper.Get("broker.ssl").(string), "true") {
 		cfg := new(tls.Config)
 
 		// Enforce TLS1.2 or higher
@@ -158,22 +169,22 @@ func main() {
 		if viper.Get("broker.caCert") != nil {
 			cacert, e := ioutil.ReadFile(viper.Get("broker.cacert").(string))
 			if e != nil {
-				log.Fatalf("Failed to append %q to RootCAs: %v", cacert, err)
+				log.Fatalf("Failed to append %q to RootCAs: %v", cacert, e)
 			}
 			if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
 				log.Println("No certs appended, using system certs only")
 			}
 		}
 
-		if viper.Get("broker.verifyPeer") != nil && viper.Get("broker.verifyPeer") == "true" {
+		if viper.Get("broker.verifyPeer") != nil && strings.EqualFold(viper.Get("broker.verifyPeer").(string), "true") {
 			if viper.Get("broker.clientCert") != nil && viper.Get("broker.clientKey") != nil {
 				cert, e := ioutil.ReadFile(viper.Get("broker.clientCert").(string))
 				if e != nil {
-					log.Fatalf("Failed to append %q to RootCAs: %v", cert, err)
+					log.Fatalf("Failed to append %q to RootCAs: %v", cert, e)
 				}
 				key, e := ioutil.ReadFile(viper.Get("broker.clientKey").(string))
 				if e != nil {
-					log.Fatalf("Failed to append %q to RootCAs: %v", key, err)
+					log.Fatalf("Failed to append %q to RootCAs: %v", key, e)
 				}
 				if certs, e := tls.X509KeyPair(cert, key); e == nil {
 					cfg.Certificates = append(cfg.Certificates, certs)
@@ -181,48 +192,20 @@ func main() {
 			}
 		}
 
-		connection, err = mq.DialTLS(brokerURI, cfg)
+		connection, err = DialTLS(brokerURI, cfg)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
 		}
 	} else {
-		connection, err = mq.Dial(brokerURI)
+		connection, err = Dial(brokerURI)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
 		}
 	}
-
-	AmqpChannel, err = mq.Channel(connection)
-	if err != nil {
-		panic(fmt.Errorf("BrokerErrMsg: %s", err))
-	}
-
-	err = mq.Exchange(AmqpChannel, brokerExchange)
-	if err != nil {
-		panic(fmt.Errorf("BrokerErrMsg: %s", err))
-	}
-
-	logHandle, _ = os.Create("_requestLog.dump")
-
-	usersMap = readUsersFile()
-
-	http.HandleFunc("/", handler)
-
-	if viper.Get("server.Cert") != nil && viper.Get("server.Key") != nil && viper.Get("server.Cert").(string) != "" && viper.Get("server.Key").(string) != "" {
-		if e := http.ListenAndServeTLS(":8000", viper.Get("server.Cert").(string), viper.Get("server.Key").(string), nil); e != nil {
-			panic(err)
-		}
-	} else {
-		if e := http.ListenAndServe(":8000", nil); e != nil {
-			panic(e)
-		}
-	}
-
-	defer AmqpChannel.Close()
-	defer connection.Close()
-
+	return connection
 }
 
+//Function for reading users mock file into a dictionary
 func readUsersFile() map[string]string {
 	users := make(map[string]string)
 	f, e := os.Open(viper.Get("server.users").(string))
@@ -241,15 +224,22 @@ func readUsersFile() map[string]string {
 	return users
 }
 
+// Function for signing the headers of the s3 requests
+// Used for for creating a signature for with the default
+// credentials of the s3 service and the user's signature (authentication)
 func resignHeader(r *http.Request, accessKey string, secretKey string, backendURL string) *http.Request {
 	if strings.Contains(backendURL, "//") {
 		host := strings.SplitN(backendURL, "//", 2)
 		r.Host = host[1]
 	}
-
-	return s3signer.SignV4(*r, accessKey, secretKey, "", "us-east-1")
+	backendRegion := "us-east-1"
+	if viper.Get("aws.region") != nil && viper.Get("aws.region").(string) != "" {
+		backendRegion = viper.Get("aws.region").(string)
+	}
+	return s3signer.SignV4(*r, accessKey, secretKey, "", backendRegion)
 }
 
+// Identifies the type of request based on the method and the url path
 func detectRequestType(r *http.Request) S3RequestType {
 	switch r.Method {
 	case http.MethodGet:
@@ -283,12 +273,18 @@ func detectRequestType(r *http.Request) S3RequestType {
 }
 
 // Extracts the signature from the authorization header
-func extractSignature(r *http.Request) string {
+func extractSignature(r *http.Request) (string, error) {
 
+	signature := ""
+	err = nil
 	re := regexp.MustCompile("Signature=(.*)")
-	signature := re.FindStringSubmatch(r.Header.Get("Authorization"))[1]
+	if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")); tmp != nil {
+		signature = tmp[1]
+	} else {
+		err = fmt.Errorf("user signature not found")
+	}
 
-	return signature
+	return signature, err
 }
 
 // Authenticates the user against stored credentials
@@ -297,29 +293,53 @@ func extractSignature(r *http.Request) string {
 // 3) Compare the signatures between the requests and return authentication status
 func authenticateUser(r *http.Request) error {
 	re := regexp.MustCompile("Credential=([^/]+)/")
-	curAccessKey := re.FindStringSubmatch(r.Header.Get("Authorization"))[1]
+	curAccessKey := ""
+	if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")); tmp != nil {
+		// Check if user requested own bucket
+		curAccessKey = tmp[1]
+		re := regexp.MustCompile("/([^/]+)/")
+		if curAccessKey != re.FindStringSubmatch(r.URL.Path)[1] {
+			err = fmt.Errorf("user not authorized to access location")
+			return err
+		}
+	} else {
+		log.Println("User not found in signature")
+		err = fmt.Errorf("user not found in signature")
+		return err
+	}
+	usersMap := readUsersFile()
 	if curSecretKey, ok := usersMap[curAccessKey]; ok {
-
 		if r.Method == http.MethodGet {
-
-			signature := extractSignature(r)
+			signature, e := extractSignature(r)
+			if e != nil {
+				log.Println("Singature not found")
+				return e
+			}
 			// Create signing request
 			nr, e := http.NewRequest(r.Method, r.URL.String(), r.Body)
 			if e != nil {
-				fmt.Println(err)
+				fmt.Println(e)
 			}
 			// Add required headers
 			nr.Header.Set("X-Amz-Date", r.Header.Get("X-Amz-Date"))
 			nr.Header.Set("X-Amz-Content-Sha256", r.Header.Get("X-Amz-Content-Sha256"))
 			nr.Host = r.Host
 			nr.URL.RawQuery = r.URL.RawQuery
-			// Sing the new request
+
+			// Sign the new request
 			resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
-			curSignature := extractSignature(nr)
+			curSignature, e := extractSignature(nr)
+			if e != nil {
+				log.Println("Singature not found")
+				e = fmt.Errorf("user signature not found")
+				fmt.Println("1", e)
+				return e
+			}
 			// Compare signatures
 			if curSignature != signature {
 				log.Println("User signature not authenticated ", curAccessKey)
 				err = fmt.Errorf("user signature not authenticated")
+				fmt.Println("2", err)
 				return err
 			}
 		}
@@ -344,10 +364,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(logHandle, "FORWARDING REQUEST TO BACKEND")
 	fmt.Fprintln(logHandle, string(dump))
 
-	if err := authenticateUser(r); err != nil {
-		notAuthorized(w, r)
-		return
-	}
 	switch t := detectRequestType(r); t {
 	case MakeBucket, RemoveBucket, Delete, Policy, Get:
 		// Not allowed
@@ -366,9 +382,19 @@ func notAllowedResponse(w http.ResponseWriter, r *http.Request) {
 }
 
 func allowedResponse(w http.ResponseWriter, r *http.Request) {
+
+	if err := authenticateUser(r); err != nil {
+		fmt.Println(err)
+		notAuthorized(w, r)
+		return
+	}
+
+	// Extract username for request's url path
 	bucket := viper.Get("aws.bucket").(string)
 	re := regexp.MustCompile("/([^/]+)/")
-	username = re.FindStringSubmatch(r.URL.Path)[1]
+	username := re.FindStringSubmatch(r.URL.Path)[1]
+
+	// Restructure request to query the users folder instead of the general bucket
 	if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?delimiter") {
 		r.URL.Path = "/" + bucket + "/"
 		if strings.Contains(r.URL.RawQuery, "&prefix") {
@@ -382,7 +408,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodPost || r.Method == http.MethodPut {
 		r.URL.Path = "/" + bucket + r.URL.Path
 	}
-	resignHeader(r, backedAccessKey, backedSecretKey, backedS3Url)
+	resignHeader(r, viper.Get("aws.accessKey").(string), viper.Get("aws.secretKey").(string), viper.Get("aws.url").(string))
 
 	cfg := new(tls.Config)
 
@@ -403,7 +429,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{Transport: tr}
 
 	// Redirect request
-	nr, err := http.NewRequest(r.Method, backedS3Url+r.URL.String(), r.Body)
+	nr, err := http.NewRequest(r.Method, viper.Get("aws.url").(string)+r.URL.String(), r.Body)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -429,8 +455,18 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Send message to RabbitMQ if the upload is finished
-	// TODO: Use the actual username in both cases and size, checksum for multipart upload
+	sendMessage(nr, r, response, contentLength, username)
+
+	// Redirect answer
+	_, err = io.Copy(w, response.Body)
+	if err != nil {
+		log.Fatalln("redirect error")
+	}
+}
+
+// Sends message to RabbitMQ if the upload is finished
+// TODO: Use the actual username in both cases and size, checksum for multipart upload
+func sendMessage(nr *http.Request, r *http.Request, response *http.Response, contentLength int64, username string) {
 	if (nr.Method == http.MethodPut && response.StatusCode == 200 && !strings.Contains(nr.URL.String(), "partNumber")) ||
 		(nr.Method == http.MethodPost && response.StatusCode == 200 && strings.Contains(nr.URL.String(), "uploadId")) {
 		event := Event{}
@@ -456,14 +492,8 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			log.Fatalf("%s", e)
 		}
-		if e := mq.Publish(brokerExchange, brokerRoutingKey, string(body), true, AmqpChannel); e != nil {
+		if e := Publish(viper.Get("broker.exchange").(string), viper.Get("broker.routingKey").(string), string(body), true, AmqpChannel); e != nil {
 			log.Fatalf("%s", e)
 		}
-	}
-
-	// Redirect answer
-	_, err = io.Copy(w, response.Body)
-	if err != nil {
-		log.Fatalln("redirect error")
 	}
 }

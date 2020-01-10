@@ -1,9 +1,9 @@
 [default]
-access_key=ElexirID
-secret_key=321654987qwe
+access_key=elexirid
+secret_key=987654321
 #access_token=FooBar123
-check_ssl_certificate = True
-check_ssl_hostname = True
+check_ssl_certificate = False
+check_ssl_hostname = False
 encoding = UTF-8
 encrypt = False
 guess_mime_type = True

@@ -5,7 +5,7 @@ ENV GO111MODULE=on
 ENV GOPATH=$PWD
 ENV CGO_ENABLED=0
 ENV GOOS=linux
-RUN go build -ldflags "-extldflags -static" -o ./build/s3proxy main.go
+RUN go build -ldflags "-extldflags -static" -o ./build/s3proxy .
 RUN echo "nobody:x:65534:65534:nobody:/:/sbin/nologin" > passwd
 
 FROM scratch
