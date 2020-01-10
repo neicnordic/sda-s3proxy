@@ -40,7 +40,6 @@ var (
 	brokerExchange   = ""
 	brokerSsl        = ""
 	brokerRoutingKey = ""
-	username         string
 	usersMap         map[string]string
 	err              error
 )
@@ -416,7 +415,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 	// Extract username for request's url path
 	bucket := viper.Get("aws.bucket").(string)
 	re := regexp.MustCompile("/([^/]+)/")
-	username = re.FindStringSubmatch(r.URL.Path)[1]
+	username := re.FindStringSubmatch(r.URL.Path)[1]
 
 	// Restructure request to query the users folder instead of the general bucket
 	if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?delimiter") {
@@ -479,7 +478,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sendMessage(nr, r, response, contentLength)
+	sendMessage(nr, r, response, contentLength, username)
 
 	// Redirect answer
 	_, err = io.Copy(w, response.Body)
@@ -490,7 +489,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 
 // Sends message to RabbitMQ if the upload is finished
 // TODO: Use the actual username in both cases and size, checksum for multipart upload
-func sendMessage(nr *http.Request, r *http.Request, response *http.Response, contentLength int64) {
+func sendMessage(nr *http.Request, r *http.Request, response *http.Response, contentLength int64, username string) {
 	if (nr.Method == http.MethodPut && response.StatusCode == 200 && !strings.Contains(nr.URL.String(), "partNumber")) ||
 		(nr.Method == http.MethodPost && response.StatusCode == 200 && strings.Contains(nr.URL.String(), "uploadId")) {
 		event := Event{}
