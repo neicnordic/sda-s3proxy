@@ -31,7 +31,6 @@ var (
 	backendS3Url     = ""
 	backendAccessKey = ""
 	backendSecretKey = ""
-	backendRegion    = ""
 	brokerHost       = ""
 	brokerPort       = ""
 	brokerUsername   = ""
@@ -158,7 +157,6 @@ func initialization() {
 	backendS3Url = viper.Get("aws.url").(string)
 	backendAccessKey = viper.Get("aws.accessKey").(string)
 	backendSecretKey = viper.Get("aws.secretKey").(string)
-	backendRegion = viper.Get("aws.region").(string)
 	brokerHost = viper.Get("broker.host").(string)
 	brokerPort = viper.Get("broker.port").(string)
 	brokerUsername = viper.Get("broker.user").(string)
@@ -259,7 +257,10 @@ func resignHeader(r *http.Request, accessKey string, secretKey string, backendUR
 		host := strings.SplitN(backendURL, "//", 2)
 		r.Host = host[1]
 	}
-
+	backendRegion := "us-east-1"
+	if viper.Get("aws.region") != nil && viper.Get("aws.region").(string) != "" {
+		backendRegion = viper.Get("aws.region").(string)
+	}
 	return s3signer.SignV4(*r, accessKey, secretKey, "", backendRegion)
 }
 
