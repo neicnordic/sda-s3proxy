@@ -31,14 +31,6 @@ var (
 	backendS3Url     = ""
 	backendAccessKey = ""
 	backendSecretKey = ""
-	brokerHost       = ""
-	brokerPort       = ""
-	brokerUsername   = ""
-	brokerPassword   = ""
-	brokerVhost      = ""
-	brokerExchange   = ""
-	brokerSsl        = ""
-	brokerRoutingKey = ""
 	usersMap         map[string]string
 	err              error
 )
@@ -90,7 +82,7 @@ func main() {
 		panic(fmt.Errorf("BrokerErrMsg: %s", err))
 	}
 
-	err = Exchange(AmqpChannel, brokerExchange)
+	err = Exchange(AmqpChannel, viper.Get("broker.exchange").(string))
 	if err != nil {
 		panic(fmt.Errorf("BrokerErrMsg: %s", err))
 	}
@@ -157,14 +149,6 @@ func initialization() {
 	backendS3Url = viper.Get("aws.url").(string)
 	backendAccessKey = viper.Get("aws.accessKey").(string)
 	backendSecretKey = viper.Get("aws.secretKey").(string)
-	brokerHost = viper.Get("broker.host").(string)
-	brokerPort = viper.Get("broker.port").(string)
-	brokerUsername = viper.Get("broker.user").(string)
-	brokerPassword = viper.Get("broker.password").(string)
-	brokerVhost = viper.Get("broker.vhost").(string)
-	brokerExchange = viper.Get("broker.exchange").(string)
-	brokerRoutingKey = viper.Get("broker.routingKey").(string)
-	brokerSsl = viper.Get("broker.ssl").(string)
 
 	if SystemCAs == nil {
 		fmt.Println("creating new CApool")
@@ -175,7 +159,7 @@ func initialization() {
 // Creates the connection to the broker
 func brokerConnection() *amqp.Connection {
 
-	brokerURI := BuildMqURI(brokerHost, brokerPort, brokerUsername, brokerPassword, brokerVhost, brokerSsl)
+	brokerURI := BuildMqURI(viper.Get("broker.host").(string), viper.Get("broker.port").(string), viper.Get("broker.user").(string), viper.Get("broker.password").(string), viper.Get("broker.vhost").(string), viper.Get("broker.ssl").(string))
 
 	var connection *amqp.Connection
 
@@ -516,7 +500,7 @@ func sendMessage(nr *http.Request, r *http.Request, response *http.Response, con
 		if e != nil {
 			log.Fatalf("%s", e)
 		}
-		if e := Publish(brokerExchange, brokerRoutingKey, string(body), true, AmqpChannel); e != nil {
+		if e := Publish(viper.Get("broker.exchange").(string), viper.Get("broker.routingKey").(string), string(body), true, AmqpChannel); e != nil {
 			log.Fatalf("%s", e)
 		}
 	}
