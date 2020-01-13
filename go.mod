@@ -8,4 +8,6 @@ require (
 	github.com/minio/minio-go/v6 v6.0.43
 	github.com/spf13/viper v1.5.0
 	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
+	github.com/stretchr/testify v1.2.2
+	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 )
