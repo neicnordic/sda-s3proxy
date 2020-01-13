@@ -11,9 +11,9 @@ import (
 )
 
 // BuildMqURI builds the MQ URI
-func BuildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl string) string {
+func BuildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl bool) string {
 	brokerURI := ""
-	if strings.EqualFold(ssl, "true") {
+	if ssl {
 		brokerURI = "amqps://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
 	} else {
 		brokerURI = "amqp://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost

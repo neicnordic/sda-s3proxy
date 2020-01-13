@@ -152,7 +152,7 @@ func initialization() {
 // Creates the connection to the broker
 func brokerConnection() *amqp.Connection {
 
-	brokerURI := BuildMqURI(viper.GetString("broker.host"), viper.GetString("broker.port"), viper.GetString("broker.user"), viper.GetString("broker.password"), viper.GetString("broker.vhost"), viper.GetString("broker.ssl"))
+	brokerURI := BuildMqURI(viper.GetString("broker.host"), viper.GetString("broker.port"), viper.GetString("broker.user"), viper.GetString("broker.password"), viper.GetString("broker.vhost"), viper.GetBool("broker.ssl"))
 
 	var connection *amqp.Connection
 
