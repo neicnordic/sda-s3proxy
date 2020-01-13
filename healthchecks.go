@@ -13,7 +13,7 @@ import (
 func healthchecks() {
 	health := healthcheck.NewHandler()
 
-	health.AddLivenessCheck("goroutine-threshold", healthcheck.GoroutineCountCheck(10))
+	health.AddLivenessCheck("goroutine-threshold", healthcheck.GoroutineCountCheck(100))
 
 	upstreamURL := viper.GetString("aws.url")
 	if viper.IsSet("aws.readypath") {
