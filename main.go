@@ -89,7 +89,7 @@ func main() {
 
 	go healthchecks()
 
-	if viper.IsSet("server.Cert") && viper.IsSet("server.Key") && viper.IsSet("server.Cert") && viper.IsSet("server.Key") {
+	if viper.IsSet("server.Cert") && viper.IsSet("server.Key") {
 		if e := http.ListenAndServeTLS(":8000", viper.GetString("server.Cert"), viper.GetString("server.Key"), nil); e != nil {
 			panic(e)
 		}
@@ -235,7 +235,7 @@ func resignHeader(r *http.Request, accessKey string, secretKey string, backendUR
 		r.Host = host[1]
 	}
 	backendRegion := "us-east-1"
-	if viper.IsSet("aws.region") && viper.IsSet("aws.region") {
+	if viper.IsSet("aws.region") {
 		backendRegion = viper.GetString("aws.region")
 	}
 	return s3signer.SignV4(*r, accessKey, secretKey, "", backendRegion)

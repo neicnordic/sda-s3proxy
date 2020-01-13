@@ -16,7 +16,7 @@ func healthchecks() {
 	health.AddLivenessCheck("goroutine-threshold", healthcheck.GoroutineCountCheck(10))
 
 	upstreamURL := viper.GetString("aws.url")
-	if viper.IsSet("aws.readypath") && viper.IsSet("aws.readypath") {
+	if viper.IsSet("aws.readypath") {
 		upstreamURL = viper.GetString("aws.url") + viper.GetString("aws.readypath")
 	}
 	health.AddReadinessCheck("S3-backend-http", httpsGetCheck(upstreamURL, 5000*time.Millisecond))
