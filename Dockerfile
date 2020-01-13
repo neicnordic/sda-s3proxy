@@ -13,5 +13,5 @@ COPY --from=0 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=0 /go/build/s3proxy s3proxy
 COPY --from=0 /go/passwd /etc/passwd
 USER 65534
-EXPOSE 8000
+EXPOSE 8000 8001
 ENTRYPOINT [ "/s3proxy" ]
