@@ -4,14 +4,13 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
 )
 
 // BuildMqURI builds the MQ URI
-func BuildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost, ssl bool) string {
+func BuildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost string, ssl bool) string {
 	brokerURI := ""
 	if ssl {
 		brokerURI = "amqps://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
