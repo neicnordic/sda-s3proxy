@@ -47,11 +47,11 @@ func TestHealthchecks(t *testing.T) {
 	ts.Listener = l
 	ts.Start()
 
-	go healthchecks()
+	go healthchecks(8888)
 
 	time.Sleep(100 * time.Millisecond)
 
-	res, err := http.Get("http://localhost:8001/ready?full=1")
+	res, err := http.Get("http://localhost:8888/ready?full=1")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -87,7 +87,7 @@ func main() {
 
 	http.HandleFunc("/", handler)
 
-	go healthchecks()
+	go healthchecks(8001)
 
 	if viper.IsSet("server.Cert") && viper.IsSet("server.Key") {
 		if e := http.ListenAndServeTLS(":8000", viper.GetString("server.Cert"), viper.GetString("server.Key"), nil); e != nil {
