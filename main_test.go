@@ -11,10 +11,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"math"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -134,6 +138,52 @@ func TestBrokerConnection_TLS(t *testing.T) {
 	viper.Set("broker.serverName", "mq")
 	viper.Set("broker.port", "5674")
 	assert.NotPanics(t, func() { brokerConnection() })
+}
+
+func TestSendMessage(t *testing.T) {
+	fmt.Println("Test main.sendMessage")
+	rwc, srv := newSession(t)
+	go func() {
+		srv.connectionOpen()
+		srv.channelOpen(1)
+		srv.recv(1, &confirmSelect{})
+		srv.send(1, &confirmSelectOk{})
+
+		srv.recv(1, &basicPublish{})
+		srv.send(1, &basicAck{DeliveryTag: 1})
+
+		srv.recv(1, &basicPublish{})
+		srv.send(1, &basicAck{DeliveryTag: 2})
+	}()
+	c, _ := amqp.Open(rwc, defaultConfig())
+	defer c.Close()
+
+	AmqpChannel, _ = c.Channel()
+
+	if err := AmqpChannel.Confirm(true); err != nil {
+		log.Fatalf("Channel could not be put into confirm mode: %s", err)
+	}
+	confirms := AmqpChannel.NotifyPublish(make(chan amqp.Confirmation, 100))
+
+	defer AmqpChannel.Close()
+
+	viper.Set("broker.exchange", "/")
+	viper.Set("broker.routingKey", "k")
+	r, _ := http.NewRequest("PUT", "localhost", strings.NewReader(""))
+	r.Header.Set("x-amz-content-sha256", "sha256")
+	nr, _ := http.NewRequest(r.Method, r.URL.Path, r.Body)
+	w := httptest.NewRecorder()
+	resp := w.Result()
+	resp.StatusCode = http.StatusOK
+
+	assert.NoError(t, sendMessage(nr, r, resp, 1, "test1"))
+	assert.NoError(t, confirm(confirms, 1))
+
+	fmt.Println("Multipart")
+	nr.Method = "POST"
+	assert.NoError(t, sendMessage(nr, r, resp, 2, "test2"))
+	assert.NoError(t, confirm(confirms, 2))
+	rwc.Close()
 }
 
 //
