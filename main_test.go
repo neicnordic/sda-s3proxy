@@ -51,3 +51,15 @@ func TestBuildMqURI(t *testing.T) {
 	amqp := buildMqURI("localhost", "5555", "mquser", "mqpass", "/vhost", false)
 	assert.Equal(t, "amqp://mquser:mqpass@localhost:5555/vhost", amqp)
 }
+
+func TestReadUsersFile(t *testing.T) {
+	viper.Reset()
+	viper.Set("server.users", "dev_utils/users.csv")
+	refMap := map[string]string{
+		"anotherid": "testpass",
+		"elexirid":  "987654321",
+		"username":  "testpass",
+	}
+	usersMap := readUsersFile()
+	assert.Equal(t, usersMap, refMap)
+}
