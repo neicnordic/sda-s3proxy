@@ -73,7 +73,7 @@ const (
 func main() {
 	initialization()
 	connection := brokerConnection()
-	AmqpChannel, err = Channel(connection)
+	AmqpChannel, err = connection.Channel()
 	if err != nil {
 		panic(fmt.Errorf("BrokerErrMsg: %s", err))
 	}

@@ -40,17 +40,6 @@ func Dial(amqpURI string) (*amqp.Connection, error) {
 	return connection, nil
 }
 
-// Channel holds the message channel information
-func Channel(connection *amqp.Connection) (*amqp.Channel, error) {
-	log.Printf("got Connection, getting Channel")
-	channel, err := connection.Channel()
-	if err != nil {
-		return nil, fmt.Errorf("Channel: %s", err)
-	}
-
-	return channel, nil
-}
-
 // Exchange declares the echange that messages are sent to
 func Exchange(channel *amqp.Channel, exchange string) error {
 	log.Printf("got Channel, declaring topic Exchange (%q)", exchange)
