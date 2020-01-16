@@ -19,6 +19,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v6/pkg/s3signer"
 	"github.com/spf13/viper"
@@ -465,11 +470,56 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func requestInfo(fullPath string) (string, int64, error) {
+	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
+
+	// Used to disable certificate check
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
+	mySession, err := session.NewSession(&aws.Config{
+		Region:           aws.String(viper.GetString("aws.region")),
+		Endpoint:         aws.String(viper.GetString("aws.url")),
+		DisableSSL:       aws.Bool(true),
+		S3ForcePathStyle: aws.Bool(true),
+		Credentials:      credentials.NewStaticCredentials(viper.GetString("aws.accessKey"), viper.GetString("aws.secretKey"), ""),
+		// Used to disable certificate check
+		HTTPClient: client,
+	})
+	svc := s3.New(mySession)
+	input := &s3.ListObjectsV2Input{
+		Bucket:  aws.String(viper.GetString("aws.bucket")),
+		MaxKeys: aws.Int64(2),
+		Prefix:  aws.String(filePath),
+	}
+
+	result, err := svc.ListObjectsV2(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case s3.ErrCodeNoSuchBucket:
+				fmt.Println(s3.ErrCodeNoSuchBucket, aerr.Error())
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err)
+		}
+		return "", 0, err
+	}
+	return *result.Contents[0].ETag, *result.Contents[0].Size, nil
+}
+
 // Sends message to RabbitMQ if the upload is finished
 // TODO: Use the actual username in both cases and size, checksum for multipart upload
 func sendMessage(nr *http.Request, r *http.Request, response *http.Response, contentLength int64, username string) error {
 	event := Event{}
 	checksum := Checksum{}
+		etag, contentLength, e := requestInfo(r.URL.Path)
 
 	// Case for simple upload
 	if nr.Method == http.MethodPut {
@@ -483,8 +533,8 @@ func sendMessage(nr *http.Request, r *http.Request, response *http.Response, con
 		event.Filesize = contentLength
 	}
 	event.Username = username
-	checksum.Type = "sha256"
-	checksum.Value = r.Header.Get("x-amz-content-sha256")
+		checksum.Type = "etag"
+		checksum.Value = etag
 	event.Checksum = checksum
 
 	body, e := json.Marshal(event)
