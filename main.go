@@ -78,9 +78,16 @@ func main() {
 		panic(fmt.Errorf("BrokerErrMsg: %s", err))
 	}
 
-	err = Exchange(AmqpChannel, viper.GetString("broker.exchange"))
-	if err != nil {
-		panic(fmt.Errorf("BrokerErrMsg: %s", err))
+	if err = AmqpChannel.ExchangeDeclare(
+		viper.GetString("broker.exchange"), // name
+		"topic",                            // type
+		true,                               // durable
+		false,                              // auto-deleted
+		false,                              // internal
+		false,                              // noWait
+		nil,                                // arguments
+	); err != nil {
+		log.Fatalf("Exchange Declare: %s", err)
 	}
 
 	logHandle, _ = os.Create("_requestLog.dump")

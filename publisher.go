@@ -40,24 +40,6 @@ func Dial(amqpURI string) (*amqp.Connection, error) {
 	return connection, nil
 }
 
-// Exchange declares the echange that messages are sent to
-func Exchange(channel *amqp.Channel, exchange string) error {
-	log.Printf("got Channel, declaring topic Exchange (%q)", exchange)
-	if err := channel.ExchangeDeclare(
-		exchange, // name
-		"topic",  // type
-		true,     // durable
-		false,    // auto-deleted
-		false,    // internal
-		false,    // noWait
-		nil,      // arguments
-	); err != nil {
-		return fmt.Errorf("Exchange Declare: %s", err)
-	}
-
-	return nil
-}
-
 // Publish published the message to the Exchange with the specified routing key
 func Publish(exchange, routingKey, body string, reliable bool, channel *amqp.Channel) error {
 
