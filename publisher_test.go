@@ -118,34 +118,6 @@ func TestExchange(t *testing.T) {
 	err = Exchange(ch, "test")
 }
 
-func TestPublish(t *testing.T) {
-	rwc, srv := newSession(t)
-
-	go func() {
-		srv.connectionOpen()
-		srv.channelOpen(1)
-
-		srv.recv(1, &confirmSelect{})
-		srv.send(1, &confirmSelectOk{})
-
-		srv.recv(1, &basicPublish{})
-
-		srv.send(1, &basicAck{DeliveryTag: 1})
-	}()
-
-	c, err := amqp.Open(rwc, defaultConfig())
-	defer c.Close()
-	assert.NoError(t, err)
-
-	ch, err := c.Channel()
-	defer ch.Close()
-	assert.NoError(t, err)
-
-	assert.NoError(t, Publish("", "q", "message", true, ch))
-
-	rwc.Close()
-}
-
 //
 // Stuff below this line is used for mocking the server interface
 // code comes from github.com/streadway/amqp

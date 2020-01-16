@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/minio/minio-go/v6/pkg/s3signer"
 	"github.com/spf13/viper"
 	"github.com/streadway/amqp"
@@ -76,6 +77,11 @@ func main() {
 	AmqpChannel, err = connection.Channel()
 	if err != nil {
 		panic(fmt.Errorf("BrokerErrMsg: %s", err))
+	}
+
+	log.Printf("enabling publishing confirms.")
+	if err = AmqpChannel.Confirm(false); err != nil {
+		log.Fatalf("Channel could not be put into confirm mode: %s", err)
 	}
 
 	if err = AmqpChannel.ExchangeDeclare(
@@ -464,8 +470,18 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sendMessage(nr, r, response, contentLength, username)
+	if (nr.Method == http.MethodPut && response.StatusCode == 200 && !strings.Contains(nr.URL.String(), "partNumber")) ||
+		(nr.Method == http.MethodPost && response.StatusCode == 200 && strings.Contains(nr.URL.String(), "uploadId")) {
+		if e := AmqpChannel.Confirm(false); e != nil {
+			log.Fatalf("channel could not be put into confirm mode: %s", e)
+		}
 
+		confirms := AmqpChannel.NotifyPublish(make(chan amqp.Confirmation, 100))
+		defer confirmOne(confirms)
+		if err = sendMessage(nr, r, response, contentLength, username); err != nil {
+			log.Printf("error when sending message: %v", err)
+		}
+	}
 	// Redirect answer
 	_, err = io.Copy(w, response.Body)
 	if err != nil {
@@ -475,34 +491,49 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 
 // Sends message to RabbitMQ if the upload is finished
 // TODO: Use the actual username in both cases and size, checksum for multipart upload
-func sendMessage(nr *http.Request, r *http.Request, response *http.Response, contentLength int64, username string) {
-	if (nr.Method == http.MethodPut && response.StatusCode == 200 && !strings.Contains(nr.URL.String(), "partNumber")) ||
-		(nr.Method == http.MethodPost && response.StatusCode == 200 && strings.Contains(nr.URL.String(), "uploadId")) {
-		event := Event{}
-		checksum := Checksum{}
+func sendMessage(nr *http.Request, r *http.Request, response *http.Response, contentLength int64, username string) error {
+	event := Event{}
+	checksum := Checksum{}
 
-		// Case for simple upload
-		if nr.Method == http.MethodPut {
-			event.Operation = "upload"
-			event.Filepath = r.URL.Path
-			event.Filesize = contentLength
-			// Case for multi-part upload
-		} else if nr.Method == http.MethodPost {
-			event.Operation = "multipart-upload"
-			event.Filepath = r.URL.Path
-			event.Filesize = contentLength
-		}
-		event.Username = username
-		checksum.Type = "sha256"
-		checksum.Value = r.Header.Get("x-amz-content-sha256")
-		event.Checksum = checksum
-
-		body, e := json.Marshal(event)
-		if e != nil {
-			log.Fatalf("%s", e)
-		}
-		if e := Publish(viper.GetString("broker.exchange"), viper.GetString("broker.routingKey"), string(body), true, AmqpChannel); e != nil {
-			log.Fatalf("%s", e)
-		}
+	// Case for simple upload
+	if nr.Method == http.MethodPut {
+		event.Operation = "upload"
+		event.Filepath = r.URL.Path
+		event.Filesize = contentLength
+		// Case for multi-part upload
+	} else if nr.Method == http.MethodPost {
+		event.Operation = "multipart-upload"
+		event.Filepath = r.URL.Path
+		event.Filesize = contentLength
 	}
+	event.Username = username
+	checksum.Type = "sha256"
+	checksum.Value = r.Header.Get("x-amz-content-sha256")
+	event.Checksum = checksum
+
+	body, e := json.Marshal(event)
+	if e != nil {
+		log.Fatalf("%s", e)
+	}
+
+	corrID, _ := uuid.NewRandom()
+
+	err := AmqpChannel.Publish(
+		viper.GetString("broker.exchange"),   // publish to an exchange
+		viper.GetString("broker.routingKey"), // routing to 0 or more queues
+		false,                                // mandatory
+		false,                                // immediate
+		amqp.Publishing{
+			Headers:         amqp.Table{},
+			ContentEncoding: "UTF-8",
+			ContentType:     "application/json",
+			DeliveryMode:    amqp.Transient, // 1=non-persistent, 2=persistent
+			CorrelationId:   corrID.String(),
+			Priority:        0, // 0-9
+			Body:            []byte(body),
+			// a bunch of application/implementation-specific fields
+		},
+	)
+	return err
+
 }
