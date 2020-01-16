@@ -161,8 +161,6 @@ func brokerConnection() *amqp.Connection {
 
 	brokerURI := buildMqURI(viper.GetString("broker.host"), viper.GetString("broker.port"), viper.GetString("broker.user"), viper.GetString("broker.password"), viper.GetString("broker.vhost"), viper.GetBool("broker.ssl"))
 
-	var connection *amqp.Connection
-
 	if viper.GetBool("broker.ssl") {
 		cfg := new(tls.Config)
 
@@ -176,7 +174,7 @@ func brokerConnection() *amqp.Connection {
 		}
 
 		if viper.IsSet("broker.caCert") {
-			cacert, e := ioutil.ReadFile(viper.GetString("broker.cacert"))
+			cacert, e := ioutil.ReadFile(viper.GetString("broker.caCert"))
 			if e != nil {
 				log.Fatalf("Failed to append %q to RootCAs: %v", cacert, e)
 			}
@@ -198,20 +196,27 @@ func brokerConnection() *amqp.Connection {
 				if certs, e := tls.X509KeyPair(cert, key); e == nil {
 					cfg.Certificates = append(cfg.Certificates, certs)
 				}
+			} else {
+				fmt.Println("No certs")
+				log.Fatalf("brokerErrMsg: No certs")
 			}
 		}
 
-		connection, err = amqp.DialTLS(brokerURI, cfg)
+		connection, err := amqp.DialTLS(brokerURI, cfg)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
+		} else {
+			return connection
 		}
 	} else {
-		connection, err = amqp.Dial(brokerURI)
+		connection, err := amqp.Dial(brokerURI)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
+		} else {
+			return connection
 		}
 	}
-	return connection
+
 }
 
 //Function for reading users mock file into a dictionary
