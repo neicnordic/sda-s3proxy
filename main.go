@@ -14,6 +14,7 @@ import (
 	"net/http/httputil"
 	"os"
 	"path"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -156,7 +157,7 @@ func initialization() {
 		}
 	}
 
-	if SystemCAs == nil {
+	if reflect.DeepEqual(SystemCAs, x509.NewCertPool()) {
 		fmt.Println("creating new CApool")
 		SystemCAs = x509.NewCertPool()
 	}
