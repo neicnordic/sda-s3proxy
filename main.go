@@ -28,7 +28,7 @@ import (
 var (
 	confVars = []string{
 		"aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket", "broker.host", "broker.port", "broker.user",
-		"broker.password", "broker.vhost", "broker.exchange", "broker.routingKey", "broker.ssl", "server.users",
+		"broker.password", "broker.vhost", "broker.exchange", "broker.routingKey", "server.users",
 	}
 	err error
 )
@@ -134,10 +134,7 @@ func initialization() {
 		viper.AddConfigPath(path.Join(ss...))
 	}
 	if viper.IsSet("server.confFile") {
-		ss := strings.Split(viper.GetString("server.confFile"), ".")
-		if ss[len(ss)-1] == "yml" || ss[len(ss)-1] == "yaml" {
-			viper.SetConfigFile(viper.GetString("server.confFile"))
-		}
+		viper.SetConfigFile(viper.GetString("server.confFile"))
 	}
 	if err = viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -147,11 +144,7 @@ func initialization() {
 					panic(fmt.Errorf("%s not set", s))
 				}
 			}
-			if viper.GetBool("broker.ssl") {
-				if !viper.IsSet("broker.caCert") {
-					panic(fmt.Errorf("broker.caCert not set"))
-				}
-			}
+
 		} else {
 			panic(fmt.Errorf("fatal error config file: %s", err))
 		}
