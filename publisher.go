@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
 	"log"
 
@@ -18,26 +17,6 @@ func BuildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost string, ssl bool) st
 		brokerURI = "amqp://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
 	}
 	return brokerURI
-}
-
-// DialTLS creates the actual connection to the MQ server
-func DialTLS(amqpURI string, cfg *tls.Config) (*amqp.Connection, error) {
-	connection, err := amqp.DialTLS(amqpURI, cfg)
-	if err != nil {
-		return nil, fmt.Errorf("Dial: %s", err)
-	}
-
-	return connection, nil
-}
-
-// Dial creates the actual connection to the MQ server
-func Dial(amqpURI string) (*amqp.Connection, error) {
-	connection, err := amqp.Dial(amqpURI)
-	if err != nil {
-		return nil, fmt.Errorf("Dial: %s", err)
-	}
-
-	return connection, nil
 }
 
 // Publish published the message to the Exchange with the specified routing key

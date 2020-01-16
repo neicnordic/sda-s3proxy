@@ -201,12 +201,12 @@ func brokerConnection() *amqp.Connection {
 			}
 		}
 
-		connection, err = DialTLS(brokerURI, cfg)
+		connection, err = amqp.DialTLS(brokerURI, cfg)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
 		}
 	} else {
-		connection, err = Dial(brokerURI)
+		connection, err = amqp.Dial(brokerURI)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
 		}
