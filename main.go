@@ -488,6 +488,9 @@ func requestInfo(fullPath string) (string, int64, error) {
 		// Used to disable certificate check
 		HTTPClient: client,
 	})
+	if err != nil {
+		return "", 0, err
+	}
 	svc := s3.New(mySession)
 	input := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(viper.GetString("aws.bucket")),
@@ -511,7 +514,7 @@ func requestInfo(fullPath string) (string, int64, error) {
 		}
 		return "", 0, err
 	}
-	return *result.Contents[0].ETag, *result.Contents[0].Size, nil
+	return strings.ReplaceAll(*result.Contents[0].ETag, "\"", ""), *result.Contents[0].Size, nil
 }
 
 // Sends message to RabbitMQ if the upload is finished
