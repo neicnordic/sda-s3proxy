@@ -280,6 +280,55 @@ func TestResignHeader(t *testing.T) {
 	resignHeader(r, "accessKey", "differentKey", "http://localhost")
 	assert.NotEqual(t, r.Header.Get("Authorization"), sig.Header.Get("Authorization"))
 }
+func TestDetectRequestType(t *testing.T) {
+	r, _ := http.NewRequest("GET", "", strings.NewReader(""))
+	list := detectRequestType(r)
+	assert.Equal(t, S3RequestType(2), list)
+
+	r.URL.Path = "localhost/"
+	get := detectRequestType(r)
+	assert.Equal(t, S3RequestType(4), get)
+
+	r.URL.RawQuery = "acl"
+	policy := detectRequestType(r)
+	assert.Equal(t, S3RequestType(7), policy)
+
+	r.Method = "DELETE"
+	r.URL.RawQuery = ""
+	rb := detectRequestType(r)
+	assert.Equal(t, S3RequestType(1), rb)
+
+	r.Method = "DELETE"
+	r.URL.Path = "uploadId"
+	abort := detectRequestType(r)
+	assert.Equal(t, S3RequestType(6), abort)
+
+	r.Method = "DELETE"
+	r.URL.Path = ""
+	del := detectRequestType(r)
+	assert.Equal(t, S3RequestType(5), del)
+
+	r.Method = "PUT"
+	r.URL.Path = "/"
+	mb := detectRequestType(r)
+	assert.Equal(t, S3RequestType(0), mb)
+
+	r.Method = "PUT"
+	r.URL.RawQuery = "policy"
+	p := detectRequestType(r)
+	assert.Equal(t, S3RequestType(7), p)
+
+	r.Method = "PUT"
+	r.URL.Path = "localhost"
+	r.URL.RawQuery = ""
+	put := detectRequestType(r)
+	assert.Equal(t, S3RequestType(3), put)
+
+	r.Method = ""
+	r.URL.Path = ""
+	other := detectRequestType(r)
+	assert.Equal(t, S3RequestType(8), other)
+}
 
 //
 // Stuff below this line is used for mocking the server interface
