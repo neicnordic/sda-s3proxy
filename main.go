@@ -313,13 +313,11 @@ func authenticateUser(r *http.Request) error {
 		curAccessKey = tmp[1]
 		re := regexp.MustCompile("/([^/]+)/")
 		if curAccessKey != re.FindStringSubmatch(r.URL.Path)[1] {
-			err = fmt.Errorf("user not authorized to access location")
-			return err
+			return fmt.Errorf("user not authorized to access location")
 		}
 	} else {
 		log.Println("User not found in signature")
-		err = fmt.Errorf("user not found in signature")
-		return err
+		return fmt.Errorf("user not found in signature")
 	}
 	usersMap := readUsersFile()
 	if curSecretKey, ok := usersMap[curAccessKey]; ok {
@@ -352,15 +350,14 @@ func authenticateUser(r *http.Request) error {
 			// Compare signatures
 			if curSignature != signature {
 				log.Println("User signature not authenticated ", curAccessKey)
-				err = fmt.Errorf("user signature not authenticated")
+				err := fmt.Errorf("user signature not authenticated")
 				fmt.Println("2", err)
-				return err
+				return fmt.Errorf("user signature not authenticated")
 			}
 		}
 	} else {
 		log.Println("User not existing: ", curAccessKey)
-		err = fmt.Errorf("user not existing")
-		return err
+		return fmt.Errorf("user not existing")
 	}
 	return nil
 }
