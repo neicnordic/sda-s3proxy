@@ -194,6 +194,13 @@ func TestExtractSignature(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestNotAuthorized(t *testing.T) {
+	r, _ := http.NewRequest("", "", strings.NewReader(""))
+	w := httptest.NewRecorder()
+	notAuthorized(w, r)
+	assert.Equal(t, 401, w.Result().StatusCode)
+}
+
 //
 // Stuff below this line is used for mocking the server interface
 // code comes from github.com/streadway/amqp
