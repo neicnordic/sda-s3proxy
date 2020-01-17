@@ -544,12 +544,11 @@ func buildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost string, ssl bool) st
 // // One would typically keep a channel of publishings, a sequence number, and a
 // // set of unacknowledged sequence numbers and loop until the publishing channel
 // // is closed.
-func confirmOne(confirms <-chan amqp.Confirmation) {
+func confirmOne(confirms <-chan amqp.Confirmation) error {
 	confirmed := <-confirms
-	log.Printf("waiting for confirmation of one publishing")
-	if confirmed.Ack {
-		log.Printf("confirmed delivery with delivery tag: %d", confirmed.DeliveryTag)
-	} else {
-		log.Printf("failed delivery of delivery tag: %d", confirmed.DeliveryTag)
+	if !confirmed.Ack {
+		return fmt.Errorf("failed delivery of delivery tag: %d", confirmed.DeliveryTag)
 	}
+	log.Printf("confirmed delivery with delivery tag: %d", confirmed.DeliveryTag)
+	return nil
 }

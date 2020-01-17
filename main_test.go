@@ -208,6 +208,63 @@ func TestNotAllowedResponse(t *testing.T) {
 	assert.Equal(t, 403, w.Result().StatusCode)
 }
 
+func TestConfirmOne(t *testing.T) {
+	fmt.Println("Test main.confirmOne")
+	rwc, srv := newSession(t)
+
+	go func() {
+		srv.connectionOpen()
+		srv.channelOpen(1)
+		srv.recv(1, &confirmSelect{})
+		srv.send(1, &confirmSelectOk{})
+
+		srv.recv(1, &basicPublish{})
+		srv.send(1, &basicAck{DeliveryTag: 1})
+
+		srv.recv(1, &basicPublish{})
+		srv.send(1, &basicNack{DeliveryTag: 2})
+	}()
+
+	c, _ := amqp.Open(rwc, defaultConfig())
+	defer c.Close()
+
+	ch, _ := c.Channel()
+	ch.Confirm(true)
+	defer ch.Close()
+
+	confirms := ch.NotifyPublish(make(chan amqp.Confirmation, 2))
+
+	msg := amqp.Publishing{
+		DeliveryMode: amqp.Transient,
+		Timestamp:    time.Now(),
+		ContentType:  "text/plain",
+		Body:         []byte("Test"),
+	}
+
+	ch.Publish(
+		"",
+		"k",
+		false,
+		false,
+		amqp.Publishing{
+			Body: msg.Body,
+		},
+	)
+	assert.NoError(t, confirmOne(confirms))
+
+	ch.Publish(
+		"",
+		"k",
+		false,
+		false,
+		amqp.Publishing{
+			Body: msg.Body,
+		},
+	)
+	assert.Error(t, confirmOne(confirms))
+	rwc.Close()
+}
+
 //
 // Stuff below this line is used for mocking the server interface
 // code comes from github.com/streadway/amqp
