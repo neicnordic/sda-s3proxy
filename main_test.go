@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/minio/minio-go/v6/pkg/s3signer"
 	"github.com/spf13/viper"
 	"github.com/streadway/amqp"
 	"github.com/stretchr/testify/assert"
@@ -263,6 +264,21 @@ func TestConfirmOne(t *testing.T) {
 	)
 	assert.Error(t, confirmOne(confirms))
 	rwc.Close()
+}
+
+func TestResignHeader(t *testing.T) {
+	fmt.Println("test main.resignHeader")
+	s, _ := http.NewRequest("", "", strings.NewReader(""))
+	s.Host = "localhost"
+	sig := s3signer.SignV4(*s, "accessKey", "secretKey", "", "us-west-1")
+
+	viper.Set("aws.region", "us-west-1")
+	r, _ := http.NewRequest("", "", strings.NewReader(""))
+	resignHeader(r, "accessKey", "secretKey", "http://localhost")
+	assert.Equal(t, r.Header.Get("Authorization"), sig.Header.Get("Authorization"))
+
+	resignHeader(r, "accessKey", "differentKey", "http://localhost")
+	assert.NotEqual(t, r.Header.Get("Authorization"), sig.Header.Get("Authorization"))
 }
 
 //
