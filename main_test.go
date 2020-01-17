@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -328,6 +329,49 @@ func TestDetectRequestType(t *testing.T) {
 	r.URL.Path = ""
 	other := detectRequestType(r)
 	assert.Equal(t, S3RequestType(8), other)
+}
+
+func TestAuthenticateUser(t *testing.T) {
+	fmt.Println("test main.authenticateUser")
+	viper.Reset()
+	viper.Set("server.users", "dev_utils/users.csv")
+	// no authentication header
+	r, _ := http.NewRequest("GET", "", strings.NewReader(""))
+	assert.Error(t, authenticateUser(r))
+
+	// correct path
+	r.URL.Path = "/dummy/"
+	r.Header.Set("Authorization", "Credential=dummy/aws4_request")
+	assert.Error(t, authenticateUser(r))
+
+	// wrong path
+	r.URL.Path = "/wrong-path/?"
+	r.Header.Set("Authorization", "Credential=dummy/aws4_request")
+	assert.Error(t, authenticateUser(r))
+
+	// no signature
+	r.URL.Path = "/username/"
+	r.Header.Set("Authorization", "Credential=username/aws4_request")
+	assert.Error(t, authenticateUser(r))
+
+	// wrong signature
+	r.Header.Set("Authorization", "Credential=username/aws4_request,Signature=d62ca288cb869cbfcaddfac5e7e078280f70294731205428b231dcb97dd5f245")
+	assert.Error(t, authenticateUser(r))
+
+	// correct signature
+	q, _ := http.NewRequest("GET", "/username/", strings.NewReader(""))
+	q.Header.Set("X-Amz-Date", time.Now().UTC().Format("20060102T150405Z"))
+	q.Header.Set("X-Amz-Content-Sha256", "")
+
+	s, _ := http.NewRequest("GET", "/username/", strings.NewReader(""))
+	s.Header.Set("X-Amz-Date", time.Now().UTC().Format("20060102T150405Z"))
+	s.Header.Set("X-Amz-Content-Sha256", "")
+	resignHeader(s, "username", "testpass", "")
+	re := regexp.MustCompile("Signature=(.*)")
+	sig := re.FindStringSubmatch(s.Header.Get("Authorization"))
+	header := fmt.Sprintf("AWS4-HMAC-SHA256 Credential=username/20200117/us-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=%s", sig[1])
+	q.Header.Set("Authorization", header)
+	assert.NoError(t, authenticateUser(q))
 }
 
 //
