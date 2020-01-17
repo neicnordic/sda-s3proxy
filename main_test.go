@@ -186,6 +186,14 @@ func TestSendMessage(t *testing.T) {
 	rwc.Close()
 }
 
+func TestExtractSignature(t *testing.T) {
+	r, _ := http.NewRequest("PUT", "localhost", strings.NewReader(""))
+	r.Header.Set("Authorization", "Signature=VGVzdEV4dHJhY3RTaWduYXR1cmUK")
+	sig, err := extractSignature(r)
+	assert.Equal(t, "VGVzdEV4dHJhY3RTaWduYXR1cmUK", sig)
+	assert.NoError(t, err)
+}
+
 //
 // Stuff below this line is used for mocking the server interface
 // code comes from github.com/streadway/amqp

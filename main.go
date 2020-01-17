@@ -289,16 +289,12 @@ func detectRequestType(r *http.Request) S3RequestType {
 // Extracts the signature from the authorization header
 func extractSignature(r *http.Request) (string, error) {
 
-	signature := ""
-	err = nil
 	re := regexp.MustCompile("Signature=(.*)")
-	if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")); tmp != nil {
-		signature = tmp[1]
-	} else {
-		err = fmt.Errorf("user signature not found")
+	signature := re.FindStringSubmatch(r.Header.Get("Authorization"))
+	if signature == nil {
+		return "", fmt.Errorf("user signature not found")
 	}
-
-	return signature, err
+	return signature[1], nil
 }
 
 // Authenticates the user against stored credentials
