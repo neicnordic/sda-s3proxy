@@ -45,6 +45,11 @@ import (
 	"github.com/streadway/amqp"
 )
 
+//
+// Stuff below this line is used for mocking the server interface
+// code comes from github.com/streadway/amqp
+//
+
 func confirm(confirms <-chan amqp.Confirmation, tag uint64) error {
 	confirmed := <-confirms
 	if !confirmed.Ack || confirmed.DeliveryTag != tag {
