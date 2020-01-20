@@ -459,7 +459,7 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 
 		confirms := AmqpChannel.NotifyPublish(make(chan amqp.Confirmation, 100))
 		defer confirmOne(confirms)
-		if err = sendMessage(nr, r, response, contentLength, username); err != nil {
+		if err = sendMessage(nr, r, response, username); err != nil {
 			log.Printf("error when sending message: %v", err)
 		}
 	}
@@ -533,7 +533,7 @@ func requestInfo(fullPath string) (string, int64, error) {
 
 // Sends message to RabbitMQ if the upload is finished
 // TODO: Use the actual username in both cases and size, checksum for multipart upload
-func sendMessage(nr *http.Request, r *http.Request, response *http.Response, contentLength int64, username string) error {
+func sendMessage(nr *http.Request, r *http.Request, response *http.Response, username string) error {
 	event := Event{}
 	checksum := Checksum{}
 	etag, contentLength, e := requestInfo(r.URL.Path)
