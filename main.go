@@ -286,17 +286,6 @@ func detectRequestType(r *http.Request) S3RequestType {
 	return Other
 }
 
-// Extracts the signature from the authorization header
-func extractSignature(r *http.Request) (string, error) {
-
-	re := regexp.MustCompile("Signature=(.*)")
-	signature := re.FindStringSubmatch(r.Header.Get("Authorization"))
-	if signature == nil {
-		return "", fmt.Errorf("user signature not found")
-	}
-	return signature[1], nil
-}
-
 // Authenticates the user against stored credentials
 // 1) Extracts the username and retrieve the key from the map
 // 2) Sign the request with the new credentials
@@ -318,16 +307,19 @@ func authenticateUser(r *http.Request) error {
 	usersMap := readUsersFile()
 	if curSecretKey, ok := usersMap[curAccessKey]; ok {
 		if r.Method == http.MethodGet {
-			signature, e := extractSignature(r)
-			if e != nil {
-				log.Println("Singature not found")
-				return e
+			re := regexp.MustCompile("Signature=(.*)")
+
+			signature := re.FindStringSubmatch(r.Header.Get("Authorization"))
+			if signature == nil {
+				return fmt.Errorf("user signature not found")
 			}
+
 			// Create signing request
 			nr, e := http.NewRequest(r.Method, r.URL.String(), r.Body)
 			if e != nil {
 				fmt.Println(e)
 			}
+
 			// Add required headers
 			nr.Header.Set("X-Amz-Date", r.Header.Get("X-Amz-Date"))
 			nr.Header.Set("X-Amz-Content-Sha256", r.Header.Get("X-Amz-Content-Sha256"))
@@ -336,18 +328,10 @@ func authenticateUser(r *http.Request) error {
 
 			// Sign the new request
 			resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
-			curSignature, e := extractSignature(nr)
-			if e != nil {
-				log.Println("Singature not found")
-				e = fmt.Errorf("user signature not found")
-				fmt.Println("1", e)
-				return e
-			}
+			curSignature := re.FindStringSubmatch(nr.Header.Get("Authorization"))
+
 			// Compare signatures
-			if curSignature != signature {
-				log.Println("User signature not authenticated ", curAccessKey)
-				err := fmt.Errorf("user signature not authenticated")
-				fmt.Println("2", err)
+			if curSignature[1] != signature[1] {
 				return fmt.Errorf("user signature not authenticated")
 			}
 		}

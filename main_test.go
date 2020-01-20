@@ -188,14 +188,6 @@ func TestSendMessage(t *testing.T) {
 	rwc.Close()
 }
 
-func TestExtractSignature(t *testing.T) {
-	r, _ := http.NewRequest("PUT", "localhost", strings.NewReader(""))
-	r.Header.Set("Authorization", "Signature=VGVzdEV4dHJhY3RTaWduYXR1cmUK")
-	sig, err := extractSignature(r)
-	assert.Equal(t, "VGVzdEV4dHJhY3RTaWduYXR1cmUK", sig)
-	assert.NoError(t, err)
-}
-
 func TestNotAuthorized(t *testing.T) {
 	r, _ := http.NewRequest("", "", strings.NewReader(""))
 	w := httptest.NewRecorder()
@@ -364,12 +356,12 @@ func TestAuthenticateUser(t *testing.T) {
 	q.Header.Set("X-Amz-Content-Sha256", "")
 
 	s, _ := http.NewRequest("GET", "/username/", strings.NewReader(""))
-	s.Header.Set("X-Amz-Date", time.Now().UTC().Format("20060102T150405Z"))
-	s.Header.Set("X-Amz-Content-Sha256", "")
-	resignHeader(s, "username", "testpass", "")
+	s.Header.Set("X-Amz-Date", q.Header.Get("X-Amz-Date"))
+	s.Header.Set("X-Amz-Content-Sha256", q.Header.Get("X-Amz-Content-Sha256"))
+	resignHeader(s, "username", "testpass", q.Host)
 	re := regexp.MustCompile("Signature=(.*)")
 	sig := re.FindStringSubmatch(s.Header.Get("Authorization"))
-	header := fmt.Sprintf("AWS4-HMAC-SHA256 Credential=username/20200117/us-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=%s", sig[1])
+	header := fmt.Sprintf("AWS4-HMAC-SHA256 Credential=username/%s/us-west-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=%s", time.Now().UTC().Format("20060102"), sig[1])
 	q.Header.Set("Authorization", header)
 	assert.NoError(t, authenticateUser(q))
 }
