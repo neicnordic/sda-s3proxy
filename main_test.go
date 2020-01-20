@@ -494,6 +494,71 @@ func TestAllowedResponse(t *testing.T) {
 	rwc.Close()
 }
 
+func TestHandler(t *testing.T) {
+	fmt.Println("test handler")
+	viper.Reset()
+	// default response
+	fmt.Println("Default")
+	d, _ := http.NewRequest("GET", "localhost/?acl", strings.NewReader(""))
+	fmt.Println("PATH:", d.URL.Path)
+	fmt.Println("PATH:", d.URL.RawQuery)
+	w1 := httptest.NewRecorder()
+	handler(w1, d)
+	assert.Equal(t, 403, w1.Result().StatusCode)
+
+	// case Delete
+	fmt.Println("Delete")
+	p, _ := http.NewRequest("DELETE", "", strings.NewReader(""))
+	w2 := httptest.NewRecorder()
+	handler(w2, p)
+	assert.Equal(t, 403, w2.Result().StatusCode)
+
+	// Put
+	fmt.Println("Put")
+	rwc, srv := newSession(t)
+	go func() {
+		srv.connectionOpen()
+		srv.channelOpen(1)
+		srv.recv(1, &confirmSelect{})
+		srv.send(1, &confirmSelectOk{})
+
+		srv.recv(1, &basicPublish{})
+		srv.send(1, &basicAck{DeliveryTag: 1})
+
+	}()
+	c, _ := amqp.Open(rwc, defaultConfig())
+	defer c.Close()
+
+	AmqpChannel, _ = c.Channel()
+	defer AmqpChannel.Close()
+
+	w3 := httptest.NewRecorder()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+
+	viper.Set("server.users", "dev_utils/users.csv")
+	viper.Set("aws.url", ts.URL)
+
+	q, _ := http.NewRequest("PUT", "/username/file", strings.NewReader(""))
+	q.Header.Set("X-Amz-Date", time.Now().UTC().Format("20060102T150405Z"))
+	q.Header.Set("X-Amz-Content-Sha256", "")
+	fmt.Println(q.URL.Path)
+
+	s, _ := http.NewRequest("PUT", q.URL.String(), strings.NewReader(""))
+	s.Header.Set("X-Amz-Date", q.Header.Get("X-Amz-Date"))
+	s.Header.Set("X-Amz-Content-Sha256", q.Header.Get("X-Amz-Content-Sha256"))
+	s.URL.RawQuery = q.URL.RawQuery
+
+	resignHeader(s, "username", "testpass", q.Host)
+	re := regexp.MustCompile("Signature=(.*)")
+	sig := re.FindStringSubmatch(s.Header.Get("Authorization"))
+	header := fmt.Sprintf("AWS4-HMAC-SHA256 Credential=username/%s/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=%s", time.Now().UTC().Format("20060102"), sig[1])
+	q.Header.Set("Authorization", header)
+
+	handler(w3, q)
+	assert.Equal(t, 200, w3.Result().StatusCode)
+	rwc.Close()
+}
+
 //
 // Stuff below this line is used for mocking the server interface
 // code comes from github.com/streadway/amqp
