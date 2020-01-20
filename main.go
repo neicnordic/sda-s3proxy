@@ -165,7 +165,7 @@ func initialization() {
 // Creates the connection to the broker
 func brokerConnection() *amqp.Connection {
 
-	brokerURI := BuildMqURI(viper.GetString("broker.host"), viper.GetString("broker.port"), viper.GetString("broker.user"), viper.GetString("broker.password"), viper.GetString("broker.vhost"), viper.GetBool("broker.ssl"))
+	brokerURI := buildMqURI(viper.GetString("broker.host"), viper.GetString("broker.port"), viper.GetString("broker.user"), viper.GetString("broker.password"), viper.GetString("broker.vhost"), viper.GetBool("broker.ssl"))
 
 	var connection *amqp.Connection
 
@@ -536,4 +536,28 @@ func sendMessage(nr *http.Request, r *http.Request, response *http.Response, con
 	)
 	return err
 
+}
+
+// BuildMqURI builds the MQ URI
+func buildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost string, ssl bool) string {
+	brokerURI := ""
+	if ssl {
+		brokerURI = "amqps://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
+	} else {
+		brokerURI = "amqp://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
+	}
+	return brokerURI
+}
+
+// // One would typically keep a channel of publishings, a sequence number, and a
+// // set of unacknowledged sequence numbers and loop until the publishing channel
+// // is closed.
+func confirmOne(confirms <-chan amqp.Confirmation) {
+	confirmed := <-confirms
+	log.Printf("waiting for confirmation of one publishing")
+	if confirmed.Ack {
+		log.Printf("confirmed delivery with delivery tag: %d", confirmed.DeliveryTag)
+	} else {
+		log.Printf("failed delivery of delivery tag: %d", confirmed.DeliveryTag)
+	}
 }
