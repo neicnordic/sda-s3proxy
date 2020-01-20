@@ -522,7 +522,7 @@ func requestInfo(fullPath string) (string, int64, error) {
 func sendMessage(nr *http.Request, r *http.Request, response *http.Response, contentLength int64, username string) error {
 	event := Event{}
 	checksum := Checksum{}
-		etag, contentLength, e := requestInfo(r.URL.Path)
+	etag, contentLength, e := requestInfo(r.URL.Path)
 
 	// Case for simple upload
 	if nr.Method == http.MethodPut {
@@ -536,8 +536,8 @@ func sendMessage(nr *http.Request, r *http.Request, response *http.Response, con
 		event.Filesize = contentLength
 	}
 	event.Username = username
-		checksum.Type = "etag"
-		checksum.Value = etag
+	checksum.Type = "etag"
+	checksum.Value = etag
 	event.Checksum = checksum
 
 	body, e := json.Marshal(event)
