@@ -474,9 +474,23 @@ func requestInfo(fullPath string) (string, int64, error) {
 	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
 
 	// Used to disable certificate check
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+
+	cfg := new(tls.Config)
+
+	cfg.RootCAs = SystemCAs
+
+	if viper.IsSet("aws.cacert") {
+		cacert, err := ioutil.ReadFile(viper.GetString("aws.cacert"))
+		if err != nil {
+			log.Fatalf("Failed to append %q to RootCAs: %v", cacert, err)
+		}
+
+		if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
+			log.Println("No certs appended, using system certs only")
+		}
 	}
+
+	tr := &http.Transport{TLSClientConfig: cfg}
 	client := &http.Client{Transport: tr}
 
 	mySession, err := session.NewSession(&aws.Config{
