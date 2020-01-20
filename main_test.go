@@ -366,6 +366,134 @@ func TestAuthenticateUser(t *testing.T) {
 	assert.NoError(t, authenticateUser(q))
 }
 
+func TestAllowedResponse(t *testing.T) {
+	fmt.Println("test main.allowedResponse")
+
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
+	if err != nil {
+		log.Fatal(err)
+	}
+	foo := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	ts := httptest.NewUnstartedServer(foo)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+
+	viper.Reset()
+	viper.Set("server.users", "dev_utils/users.csv")
+	viper.Set("aws.url", "http://localhost:8080")
+	viper.Set("aws.bucket", "test")
+	viper.Set("aws.cacert", "dev_utils/certs/ca.crt")
+
+	r, _ := http.NewRequest("GET", "/username/", strings.NewReader(""))
+	w := httptest.NewRecorder()
+
+	// not authorized
+	fmt.Println("not authorized")
+	allowedResponse(w, r)
+	assert.Equal(t, 401, w.Result().StatusCode)
+
+	// authorized ?location
+	fmt.Println("authorized")
+	w = httptest.NewRecorder()
+	q, _ := http.NewRequest("GET", "/username/", strings.NewReader(""))
+	q.Header.Set("X-Amz-Date", time.Now().UTC().Format("20060102T150405Z"))
+	q.Header.Set("X-Amz-Content-Sha256", "")
+	q.URL.RawQuery = "location"
+
+	s, _ := http.NewRequest("GET", q.URL.Path, strings.NewReader(""))
+	s.Header.Set("X-Amz-Date", q.Header.Get("X-Amz-Date"))
+	s.Header.Set("X-Amz-Content-Sha256", q.Header.Get("X-Amz-Content-Sha256"))
+	s.URL.RawQuery = q.URL.RawQuery
+	resignHeader(s, "username", "testpass", q.Host)
+	re := regexp.MustCompile("Signature=(.*)")
+	sig := re.FindStringSubmatch(s.Header.Get("Authorization"))
+	header := fmt.Sprintf("AWS4-HMAC-SHA256 Credential=username/%s/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=%s", time.Now().UTC().Format("20060102"), sig[1])
+
+	q.Header.Set("Authorization", header)
+	allowedResponse(w, q)
+	assert.Equal(t, 200, w.Result().StatusCode)
+
+	// authorized ?delimiter
+	w = httptest.NewRecorder()
+	q, _ = http.NewRequest("GET", "/username/", strings.NewReader(""))
+	q.Header.Set("X-Amz-Date", time.Now().UTC().Format("20060102T150405Z"))
+	q.Header.Set("X-Amz-Content-Sha256", "")
+	q.URL.RawQuery = "delimiter"
+
+	s, _ = http.NewRequest("GET", q.URL.Path, strings.NewReader(""))
+	s.Header.Set("X-Amz-Date", q.Header.Get("X-Amz-Date"))
+	s.Header.Set("X-Amz-Content-Sha256", q.Header.Get("X-Amz-Content-Sha256"))
+	s.URL.RawQuery = q.URL.RawQuery
+	resignHeader(s, "username", "testpass", q.Host)
+	re = regexp.MustCompile("Signature=(.*)")
+	sig = re.FindStringSubmatch(s.Header.Get("Authorization"))
+	header = fmt.Sprintf("AWS4-HMAC-SHA256 Credential=username/%s/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=%s", time.Now().UTC().Format("20060102"), sig[1])
+
+	q.Header.Set("Authorization", header)
+	allowedResponse(w, q)
+	assert.Equal(t, 200, w.Result().StatusCode)
+
+	// authorized ?delimiter &prefix=
+	w = httptest.NewRecorder()
+	q, _ = http.NewRequest("GET", "/username/", strings.NewReader(""))
+	q.Header.Set("X-Amz-Date", time.Now().UTC().Format("20060102T150405Z"))
+	q.Header.Set("X-Amz-Content-Sha256", "")
+	q.URL.RawQuery = "delimiter&prefix="
+
+	s, _ = http.NewRequest("GET", q.URL.Path, strings.NewReader(""))
+	s.Header.Set("X-Amz-Date", q.Header.Get("X-Amz-Date"))
+	s.Header.Set("X-Amz-Content-Sha256", q.Header.Get("X-Amz-Content-Sha256"))
+	s.URL.RawQuery = q.URL.RawQuery
+	resignHeader(s, "username", "testpass", q.Host)
+	re = regexp.MustCompile("Signature=(.*)")
+	sig = re.FindStringSubmatch(s.Header.Get("Authorization"))
+	header = fmt.Sprintf("AWS4-HMAC-SHA256 Credential=username/%s/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=%s", time.Now().UTC().Format("20060102"), sig[1])
+
+	q.Header.Set("Authorization", header)
+	allowedResponse(w, q)
+	assert.Equal(t, 200, w.Result().StatusCode)
+
+	// authorized PUT
+	viper.Set("broker.host", "localhost")
+
+	rwc, srv := newSession(t)
+	go func() {
+		srv.connectionOpen()
+		srv.channelOpen(1)
+		srv.recv(1, &confirmSelect{})
+		srv.send(1, &confirmSelectOk{})
+
+		srv.recv(1, &basicPublish{})
+		srv.send(1, &basicAck{DeliveryTag: 1})
+
+	}()
+	c, _ := amqp.Open(rwc, defaultConfig())
+	defer c.Close()
+
+	AmqpChannel, _ = c.Channel()
+	defer AmqpChannel.Close()
+
+	w = httptest.NewRecorder()
+	q, _ = http.NewRequest("PUT", "/username/", strings.NewReader(""))
+	q.Header.Set("X-Amz-Date", time.Now().UTC().Format("20060102T150405Z"))
+	q.Header.Set("X-Amz-Content-Sha256", "")
+
+	s, _ = http.NewRequest("GET", q.URL.Path, strings.NewReader(""))
+	s.Header.Set("X-Amz-Date", q.Header.Get("X-Amz-Date"))
+	s.Header.Set("X-Amz-Content-Sha256", q.Header.Get("X-Amz-Content-Sha256"))
+	s.URL.RawQuery = q.URL.RawQuery
+	resignHeader(s, "username", "testpass", q.Host)
+	re = regexp.MustCompile("Signature=(.*)")
+	sig = re.FindStringSubmatch(s.Header.Get("Authorization"))
+	header = fmt.Sprintf("AWS4-HMAC-SHA256 Credential=username/%s/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=%s", time.Now().UTC().Format("20060102"), sig[1])
+
+	q.Header.Set("Authorization", header)
+	allowedResponse(w, q)
+	assert.Equal(t, 200, w.Result().StatusCode)
+	rwc.Close()
+}
+
 //
 // Stuff below this line is used for mocking the server interface
 // code comes from github.com/streadway/amqp
