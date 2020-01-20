@@ -537,6 +537,9 @@ func sendMessage(nr *http.Request, r *http.Request, response *http.Response, use
 	event := Event{}
 	checksum := Checksum{}
 	etag, contentLength, e := requestInfo(r.URL.Path)
+	if e != nil {
+		log.Fatalf("%s", e)
+	}
 
 	// Case for simple upload
 	if nr.Method == http.MethodPut {

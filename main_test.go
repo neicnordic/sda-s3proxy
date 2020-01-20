@@ -167,12 +167,12 @@ func TestSendMessage(t *testing.T) {
 	resp := w.Result()
 	resp.StatusCode = http.StatusOK
 
-	assert.NoError(t, sendMessage(nr, r, resp, 1, "test1"))
+	assert.NoError(t, sendMessage(nr, r, resp, "test1"))
 	assert.NoError(t, confirm(confirms, 1))
 
 	fmt.Println("Multipart")
 	nr.Method = "POST"
-	assert.NoError(t, sendMessage(nr, r, resp, 2, "test2"))
+	assert.NoError(t, sendMessage(nr, r, resp, "test2"))
 	assert.NoError(t, confirm(confirms, 2))
 	rwc.Close()
 }
