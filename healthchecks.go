@@ -4,16 +4,17 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/heptiolabs/healthcheck"
 	"github.com/spf13/viper"
 )
 
-func healthchecks() {
+func healthchecks(port int) {
 	health := healthcheck.NewHandler()
 
-	health.AddLivenessCheck("goroutine-threshold", healthcheck.GoroutineCountCheck(10))
+	health.AddLivenessCheck("goroutine-threshold", healthcheck.GoroutineCountCheck(100))
 
 	upstreamURL := viper.GetString("aws.url")
 	if viper.IsSet("aws.readypath") {
@@ -26,7 +27,9 @@ func healthchecks() {
 		"broker-tcp",
 		healthcheck.TCPDialCheck(brokerURL, 50*time.Millisecond))
 
-	if err = http.ListenAndServe(":8001", health); err != nil {
+	addr := ":" + strconv.Itoa(port)
+
+	if err = http.ListenAndServe(addr, health); err != nil {
 		panic(err)
 	}
 }

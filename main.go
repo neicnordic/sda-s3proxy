@@ -14,10 +14,12 @@ import (
 	"net/http/httputil"
 	"os"
 	"path"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/minio/minio-go/v6/pkg/s3signer"
 	"github.com/spf13/viper"
 	"github.com/streadway/amqp"
@@ -26,7 +28,7 @@ import (
 var (
 	confVars = []string{
 		"aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket", "broker.host", "broker.port", "broker.user",
-		"broker.password", "broker.vhost", "broker.exchange", "broker.routingKey", "broker.ssl", "server.users",
+		"broker.password", "broker.vhost", "broker.exchange", "broker.routingKey", "server.users",
 	}
 	err error
 )
@@ -73,21 +75,33 @@ const (
 func main() {
 	initialization()
 	connection := brokerConnection()
-	AmqpChannel, err = Channel(connection)
+	AmqpChannel, err = connection.Channel()
 	if err != nil {
 		panic(fmt.Errorf("BrokerErrMsg: %s", err))
 	}
 
-	err = Exchange(AmqpChannel, viper.GetString("broker.exchange"))
-	if err != nil {
-		panic(fmt.Errorf("BrokerErrMsg: %s", err))
+	log.Printf("enabling publishing confirms.")
+	if err = AmqpChannel.Confirm(false); err != nil {
+		log.Fatalf("Channel could not be put into confirm mode: %s", err)
+	}
+
+	if err = AmqpChannel.ExchangeDeclare(
+		viper.GetString("broker.exchange"), // name
+		"topic",                            // type
+		true,                               // durable
+		false,                              // auto-deleted
+		false,                              // internal
+		false,                              // noWait
+		nil,                                // arguments
+	); err != nil {
+		log.Fatalf("Exchange Declare: %s", err)
 	}
 
 	logHandle, _ = os.Create("_requestLog.dump")
 
 	http.HandleFunc("/", handler)
 
-	go healthchecks()
+	go healthchecks(8001)
 
 	if viper.IsSet("server.Cert") && viper.IsSet("server.Key") {
 		if e := http.ListenAndServeTLS(":8000", viper.GetString("server.Cert"), viper.GetString("server.Key"), nil); e != nil {
@@ -120,10 +134,7 @@ func initialization() {
 		viper.AddConfigPath(path.Join(ss...))
 	}
 	if viper.IsSet("server.confFile") {
-		ss := strings.Split(viper.GetString("server.confFile"), ".")
-		if ss[len(ss)-1] == "yml" || ss[len(ss)-1] == "yaml" {
-			viper.SetConfigFile(viper.GetString("server.confFile"))
-		}
+		viper.SetConfigFile(viper.GetString("server.confFile"))
 	}
 	if err = viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -133,17 +144,13 @@ func initialization() {
 					panic(fmt.Errorf("%s not set", s))
 				}
 			}
-			if viper.GetBool("broker.ssl") {
-				if !viper.IsSet("broker.caCert") {
-					panic(fmt.Errorf("broker.caCert not set"))
-				}
-			}
+
 		} else {
 			panic(fmt.Errorf("fatal error config file: %s", err))
 		}
 	}
 
-	if SystemCAs == nil {
+	if reflect.DeepEqual(SystemCAs, x509.NewCertPool()) {
 		fmt.Println("creating new CApool")
 		SystemCAs = x509.NewCertPool()
 	}
@@ -152,9 +159,7 @@ func initialization() {
 // Creates the connection to the broker
 func brokerConnection() *amqp.Connection {
 
-	brokerURI := BuildMqURI(viper.GetString("broker.host"), viper.GetString("broker.port"), viper.GetString("broker.user"), viper.GetString("broker.password"), viper.GetString("broker.vhost"), viper.GetBool("broker.ssl"))
-
-	var connection *amqp.Connection
+	brokerURI := buildMqURI(viper.GetString("broker.host"), viper.GetString("broker.port"), viper.GetString("broker.user"), viper.GetString("broker.password"), viper.GetString("broker.vhost"), viper.GetBool("broker.ssl"))
 
 	if viper.GetBool("broker.ssl") {
 		cfg := new(tls.Config)
@@ -169,7 +174,7 @@ func brokerConnection() *amqp.Connection {
 		}
 
 		if viper.IsSet("broker.caCert") {
-			cacert, e := ioutil.ReadFile(viper.GetString("broker.cacert"))
+			cacert, e := ioutil.ReadFile(viper.GetString("broker.caCert"))
 			if e != nil {
 				log.Fatalf("Failed to append %q to RootCAs: %v", cacert, e)
 			}
@@ -191,20 +196,27 @@ func brokerConnection() *amqp.Connection {
 				if certs, e := tls.X509KeyPair(cert, key); e == nil {
 					cfg.Certificates = append(cfg.Certificates, certs)
 				}
+			} else {
+				fmt.Println("No certs")
+				log.Fatalf("brokerErrMsg: No certs")
 			}
 		}
 
-		connection, err = DialTLS(brokerURI, cfg)
+		connection, err := amqp.DialTLS(brokerURI, cfg)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
+		} else {
+			return connection
 		}
 	} else {
-		connection, err = Dial(brokerURI)
+		connection, err := amqp.Dial(brokerURI)
 		if err != nil {
 			panic(fmt.Errorf("BrokerErrMsg: %s", err))
+		} else {
+			return connection
 		}
 	}
-	return connection
+
 }
 
 //Function for reading users mock file into a dictionary
@@ -274,21 +286,6 @@ func detectRequestType(r *http.Request) S3RequestType {
 	return Other
 }
 
-// Extracts the signature from the authorization header
-func extractSignature(r *http.Request) (string, error) {
-
-	signature := ""
-	err = nil
-	re := regexp.MustCompile("Signature=(.*)")
-	if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")); tmp != nil {
-		signature = tmp[1]
-	} else {
-		err = fmt.Errorf("user signature not found")
-	}
-
-	return signature, err
-}
-
 // Authenticates the user against stored credentials
 // 1) Extracts the username and retrieve the key from the map
 // 2) Sign the request with the new credentials
@@ -301,27 +298,28 @@ func authenticateUser(r *http.Request) error {
 		curAccessKey = tmp[1]
 		re := regexp.MustCompile("/([^/]+)/")
 		if curAccessKey != re.FindStringSubmatch(r.URL.Path)[1] {
-			err = fmt.Errorf("user not authorized to access location")
-			return err
+			return fmt.Errorf("user not authorized to access location")
 		}
 	} else {
 		log.Println("User not found in signature")
-		err = fmt.Errorf("user not found in signature")
-		return err
+		return fmt.Errorf("user not found in signature")
 	}
 	usersMap := readUsersFile()
 	if curSecretKey, ok := usersMap[curAccessKey]; ok {
 		if r.Method == http.MethodGet {
-			signature, e := extractSignature(r)
-			if e != nil {
-				log.Println("Singature not found")
-				return e
+			re := regexp.MustCompile("Signature=(.*)")
+
+			signature := re.FindStringSubmatch(r.Header.Get("Authorization"))
+			if signature == nil {
+				return fmt.Errorf("user signature not found")
 			}
+
 			// Create signing request
 			nr, e := http.NewRequest(r.Method, r.URL.String(), r.Body)
 			if e != nil {
 				fmt.Println(e)
 			}
+
 			// Add required headers
 			nr.Header.Set("X-Amz-Date", r.Header.Get("X-Amz-Date"))
 			nr.Header.Set("X-Amz-Content-Sha256", r.Header.Get("X-Amz-Content-Sha256"))
@@ -330,25 +328,16 @@ func authenticateUser(r *http.Request) error {
 
 			// Sign the new request
 			resignHeader(nr, curAccessKey, curSecretKey, nr.Host)
-			curSignature, e := extractSignature(nr)
-			if e != nil {
-				log.Println("Singature not found")
-				e = fmt.Errorf("user signature not found")
-				fmt.Println("1", e)
-				return e
-			}
+			curSignature := re.FindStringSubmatch(nr.Header.Get("Authorization"))
+
 			// Compare signatures
-			if curSignature != signature {
-				log.Println("User signature not authenticated ", curAccessKey)
-				err = fmt.Errorf("user signature not authenticated")
-				fmt.Println("2", err)
-				return err
+			if curSignature[1] != signature[1] {
+				return fmt.Errorf("user signature not authenticated")
 			}
 		}
 	} else {
 		log.Println("User not existing: ", curAccessKey)
-		err = fmt.Errorf("user not existing")
-		return err
+		return fmt.Errorf("user not existing")
 	}
 	return nil
 }
@@ -457,8 +446,18 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sendMessage(nr, r, response, contentLength, username)
+	if (nr.Method == http.MethodPut && response.StatusCode == 200 && !strings.Contains(nr.URL.String(), "partNumber")) ||
+		(nr.Method == http.MethodPost && response.StatusCode == 200 && strings.Contains(nr.URL.String(), "uploadId")) {
+		if e := AmqpChannel.Confirm(false); e != nil {
+			log.Fatalf("channel could not be put into confirm mode: %s", e)
+		}
 
+		confirms := AmqpChannel.NotifyPublish(make(chan amqp.Confirmation, 100))
+		defer confirmOne(confirms)
+		if err = sendMessage(nr, r, response, contentLength, username); err != nil {
+			log.Printf("error when sending message: %v", err)
+		}
+	}
 	// Redirect answer
 	_, err = io.Copy(w, response.Body)
 	if err != nil {
@@ -468,34 +467,72 @@ func allowedResponse(w http.ResponseWriter, r *http.Request) {
 
 // Sends message to RabbitMQ if the upload is finished
 // TODO: Use the actual username in both cases and size, checksum for multipart upload
-func sendMessage(nr *http.Request, r *http.Request, response *http.Response, contentLength int64, username string) {
-	if (nr.Method == http.MethodPut && response.StatusCode == 200 && !strings.Contains(nr.URL.String(), "partNumber")) ||
-		(nr.Method == http.MethodPost && response.StatusCode == 200 && strings.Contains(nr.URL.String(), "uploadId")) {
-		event := Event{}
-		checksum := Checksum{}
+func sendMessage(nr *http.Request, r *http.Request, response *http.Response, contentLength int64, username string) error {
+	event := Event{}
+	checksum := Checksum{}
 
-		// Case for simple upload
-		if nr.Method == http.MethodPut {
-			event.Operation = "upload"
-			event.Filepath = r.URL.Path
-			event.Filesize = contentLength
-			// Case for multi-part upload
-		} else if nr.Method == http.MethodPost {
-			event.Operation = "multipart-upload"
-			event.Filepath = r.URL.Path
-			event.Filesize = contentLength
-		}
-		event.Username = username
-		checksum.Type = "sha256"
-		checksum.Value = r.Header.Get("x-amz-content-sha256")
-		event.Checksum = checksum
-
-		body, e := json.Marshal(event)
-		if e != nil {
-			log.Fatalf("%s", e)
-		}
-		if e := Publish(viper.GetString("broker.exchange"), viper.GetString("broker.routingKey"), string(body), true, AmqpChannel); e != nil {
-			log.Fatalf("%s", e)
-		}
+	// Case for simple upload
+	if nr.Method == http.MethodPut {
+		event.Operation = "upload"
+		event.Filepath = r.URL.Path
+		event.Filesize = contentLength
+		// Case for multi-part upload
+	} else if nr.Method == http.MethodPost {
+		event.Operation = "multipart-upload"
+		event.Filepath = r.URL.Path
+		event.Filesize = contentLength
 	}
+	event.Username = username
+	checksum.Type = "sha256"
+	checksum.Value = r.Header.Get("x-amz-content-sha256")
+	event.Checksum = checksum
+
+	body, e := json.Marshal(event)
+	if e != nil {
+		log.Fatalf("%s", e)
+	}
+
+	corrID, _ := uuid.NewRandom()
+
+	err := AmqpChannel.Publish(
+		viper.GetString("broker.exchange"),   // publish to an exchange
+		viper.GetString("broker.routingKey"), // routing to 0 or more queues
+		false,                                // mandatory
+		false,                                // immediate
+		amqp.Publishing{
+			Headers:         amqp.Table{},
+			ContentEncoding: "UTF-8",
+			ContentType:     "application/json",
+			DeliveryMode:    amqp.Transient, // 1=non-persistent, 2=persistent
+			CorrelationId:   corrID.String(),
+			Priority:        0, // 0-9
+			Body:            []byte(body),
+			// a bunch of application/implementation-specific fields
+		},
+	)
+	return err
+
+}
+
+// BuildMqURI builds the MQ URI
+func buildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost string, ssl bool) string {
+	brokerURI := ""
+	if ssl {
+		brokerURI = "amqps://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
+	} else {
+		brokerURI = "amqp://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
+	}
+	return brokerURI
+}
+
+// // One would typically keep a channel of publishings, a sequence number, and a
+// // set of unacknowledged sequence numbers and loop until the publishing channel
+// // is closed.
+func confirmOne(confirms <-chan amqp.Confirmation) error {
+	confirmed := <-confirms
+	if !confirmed.Ack {
+		return fmt.Errorf("failed delivery of delivery tag: %d", confirmed.DeliveryTag)
+	}
+	log.Printf("confirmed delivery with delivery tag: %d", confirmed.DeliveryTag)
+	return nil
 }
