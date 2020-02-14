@@ -18,18 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReadUsersFile(t *testing.T) {
-	viper.Reset()
-	viper.Set("server.users", "dev_utils/users.csv")
-	refMap := map[string]string{
-		"anotherid": "testpass",
-		"elexirid":  "987654321",
-		"username":  "testpass",
-	}
-	usersMap := readUsersFile()
-	assert.Equal(t, usersMap, refMap)
-}
-
 func TestBrokerConnection_noTLS(t *testing.T) {
 	fmt.Println("Test main.brokerConnection")
 	SystemCAs, _ = x509.SystemCertPool()
