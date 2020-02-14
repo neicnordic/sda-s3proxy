@@ -41,21 +41,6 @@ var AmqpChannel *amqp.Channel
 // SystemCAs holds the Ca certs from the base system
 var SystemCAs, _ = x509.SystemCertPool()
 
-// Checksum used in the message
-type Checksum struct {
-	Type  string `json:"type"`
-	Value string `json:"value"`
-}
-
-// The Event struct
-type Event struct {
-	Operation string   `json:"operation"`
-	Username  string   `json:"user"`
-	Filepath  string   `json:"filepath"`
-	Filesize  int64    `json:"filesize"`
-	Checksum  Checksum `json:"encoded_checksum"`
-}
-
 // S3RequestType is the
 type S3RequestType int
 
@@ -512,27 +497,4 @@ func sendMessage(nr *http.Request, r *http.Request, response *http.Response, con
 	)
 	return err
 
-}
-
-// BuildMqURI builds the MQ URI
-func buildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost string, ssl bool) string {
-	brokerURI := ""
-	if ssl {
-		brokerURI = "amqps://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
-	} else {
-		brokerURI = "amqp://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
-	}
-	return brokerURI
-}
-
-// // One would typically keep a channel of publishings, a sequence number, and a
-// // set of unacknowledged sequence numbers and loop until the publishing channel
-// // is closed.
-func confirmOne(confirms <-chan amqp.Confirmation) error {
-	confirmed := <-confirms
-	if !confirmed.Ack {
-		return fmt.Errorf("failed delivery of delivery tag: %d", confirmed.DeliveryTag)
-	}
-	log.Printf("confirmed delivery with delivery tag: %d", confirmed.DeliveryTag)
-	return nil
 }
