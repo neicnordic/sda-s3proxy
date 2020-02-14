@@ -74,4 +74,10 @@ func TestUserFileAuthenticator_ValidateSignature(t *testing.T) {
 	r.URL.Path = "/username/"
 	s3signer.SignV4(*r, "snubbe", "incorrect", "", "us-east-1")
 	assert.Error(t, a.Authenticate(r))
+
+	r, _ = http.NewRequest("", "/", nil)
+	r.Host = "localhost"
+	r.Header.Set("X-Amz-Content-Sha256", "Just needs to be here")
+	r.URL.Path = "/username/"
+	assert.Error(t, a.Authenticate(r))
 }

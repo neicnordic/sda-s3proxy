@@ -17,8 +17,8 @@ type FakeServer struct {
 	pinged bool
 }
 
-func startFakeServer() *FakeServer {
-	l, err := net.Listen("tcp", "127.0.0.1:9023")
+func startFakeServer(port string) *FakeServer {
+	l, err := net.Listen("tcp", "127.0.0.1:" + port)
 	if err != nil {
 		panic(fmt.Errorf("Can't create mock server for testing: %s", err))
 	}
@@ -65,9 +65,17 @@ func (m *MockMessenger) CheckAndRestore() bool {
 	return true
 }
 
+// AlwaysAllow is an Authenticator that always authenticates
+type AlwaysDeny struct{}
+
+// Authenticate authenticates everyone.
+func (u *AlwaysDeny) Authenticate(r *http.Request) error {
+	return fmt.Errorf("Denied!")
+}
+
 func TestServeHTTP_disallowed(t *testing.T) {
 	// Start fake server
-	f := startFakeServer()
+	f := startFakeServer("9023")
 	defer f.Close()
 
 	s3conf := S3Config{
@@ -79,7 +87,7 @@ func TestServeHTTP_disallowed(t *testing.T) {
 		cacert:    "./dev_utils/certs/ca.crt",
 	}
 	messenger := NewMockMessenger()
-	proxy := NewProxy(s3conf, NewAlwaysAllow(), messenger, new(tls.Config))
+	proxy := NewProxy(s3conf, &AlwaysDeny{}, messenger, new(tls.Config))
 
 	r, _ := http.NewRequest("", "", nil)
 	w := httptest.NewRecorder()
@@ -94,7 +102,7 @@ func TestServeHTTP_disallowed(t *testing.T) {
 
 	// Deletion of files are dissallowed
 	r.Method = "DELETE"
-	r.URL, _ = url.Parse("/asdf/")
+	r.URL, _ = url.Parse("/asdf/asdf")
 	proxy.ServeHTTP(w, r)
 	assert.Equal(t, 403, w.Result().StatusCode)
 	assert.Equal(t, false, f.PingedAndRestore())
@@ -126,16 +134,57 @@ func TestServeHTTP_disallowed(t *testing.T) {
 	assert.Equal(t, 403, w.Result().StatusCode)
 	assert.Equal(t, false, f.PingedAndRestore())
 	assert.Equal(t, false, messenger.CheckAndRestore())
+
+	// Create bucket disallowed
+	w = httptest.NewRecorder()
+	r.Method = "PUT"
+	r.URL, _ = url.Parse("/asdf/")
+	proxy.ServeHTTP(w, r)
+	assert.Equal(t, 403, w.Result().StatusCode)
+	assert.Equal(t, false, f.PingedAndRestore())
+	assert.Equal(t, false, messenger.CheckAndRestore())
+
+	// Not authorized user get 401 response
+	w = httptest.NewRecorder()
+	r.Method = "GET"
+	r.URL, _ = url.Parse("/username/file")
+	proxy.ServeHTTP(w, r)
+	assert.Equal(t, 401, w.Result().StatusCode)
+	assert.Equal(t, false, f.PingedAndRestore())
+	assert.Equal(t, false, messenger.CheckAndRestore())
+}
+
+func TestServeHTTP_S3Unresponsive(t *testing.T) {
+	s3conf := S3Config{
+		url:       "http://localhost:40211",
+		accessKey: "someAccess",
+		secretKey: "someSecret",
+		bucket:    "buckbuck",
+		region:    "us-east-1",
+		cacert:    "./dev_utils/certs/ca.crt",
+	}
+	messenger := NewMockMessenger()
+	proxy := NewProxy(s3conf, &AlwaysAllow{}, messenger, new(tls.Config))
+
+	r, _ := http.NewRequest("", "", nil)
+	w := httptest.NewRecorder()
+
+	// Just try to list the files
+	r.Method = "GET"
+	r.URL, _ = url.Parse("/asdf/asdf")
+	proxy.ServeHTTP(w, r)
+	assert.Equal(t, 500, w.Result().StatusCode)
+	assert.Equal(t, false, messenger.CheckAndRestore())
 }
 
 func TestServeHTTP_allowed(t *testing.T) {
 	// Start fake server
-	f := startFakeServer()
+	f := startFakeServer("9024")
 	defer f.Close()
 
 	// Start proxy
 	s3conf := S3Config{
-		url:       "http://localhost:9023",
+		url:       "http://localhost:9024",
 		accessKey: "someAccess",
 		secretKey: "someSecret",
 		bucket:    "buckbuck",
@@ -192,9 +241,37 @@ func TestServeHTTP_allowed(t *testing.T) {
 	assert.Equal(t, false, messenger.CheckAndRestore())
 
 	// Abort multipart works
-	r.Method = "POST"
 	r.Method = "DELETE"
 	r.URL, _ = url.Parse("/asdf/asdf?uploadId=123")
+	w = httptest.NewRecorder()
+	proxy.ServeHTTP(w, r)
+	assert.Equal(t, 200, w.Result().StatusCode)
+	assert.Equal(t, true, f.PingedAndRestore())
+	assert.Equal(t, false, messenger.CheckAndRestore())
+
+    // Going through the different extra stuff that can be in the get request
+    // that trigger different code paths in the code.
+    // Delimiter alone
+	r.Method = "GET"
+	r.URL, _ = url.Parse("/username/file?delimiter=puppe")
+	w = httptest.NewRecorder()
+	proxy.ServeHTTP(w, r)
+	assert.Equal(t, 200, w.Result().StatusCode)
+	assert.Equal(t, true, f.PingedAndRestore())
+	assert.Equal(t, false, messenger.CheckAndRestore())
+
+    // Delimiter alone together with prefix
+	r.Method = "GET"
+	r.URL, _ = url.Parse("/username/file?delimiter=puppe&prefix=asdf")
+	w = httptest.NewRecorder()
+	proxy.ServeHTTP(w, r)
+	assert.Equal(t, 200, w.Result().StatusCode)
+	assert.Equal(t, true, f.PingedAndRestore())
+	assert.Equal(t, false, messenger.CheckAndRestore())
+
+    // Location parameter
+	r.Method = "GET"
+	r.URL, _ = url.Parse("/username/file?location=fnuffe")
 	w = httptest.NewRecorder()
 	proxy.ServeHTTP(w, r)
 	assert.Equal(t, 200, w.Result().StatusCode)
