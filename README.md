@@ -1,4 +1,8 @@
 # S3-Upload-Proxy
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-orange.svg)](https://www.gnu.org/licenses/agpl-3.0)
+![](https://github.com/NBISweden/S3-Upload-Proxy/workflows/static%20check/badge.svg)
+![](https://github.com/NBISweden/S3-Upload-Proxy/workflows/Go%20tests/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/NBISweden/S3-Upload-Proxy/badge.svg?branch=master)](https://coveralls.io/github/NBISweden/S3-Upload-Proxy?branch=master)
 
 S3 Upload Proxy
 
