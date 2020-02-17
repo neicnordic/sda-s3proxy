@@ -109,15 +109,15 @@ func (c *Config) readConfig() {
 	}
 	if viper.IsSet("broker.verifyPeer") {
 		b.verifyPeer = viper.GetBool("broker.verifyPeer")
+		// Since verifyPeer is specified, these are required.
+		if !(viper.IsSet("broker.clientCert") && viper.IsSet("broker.clientKey")) {
+			panic(fmt.Errorf("when broker.verifyPeer is set both broker.clientCert and broker.clientKey is needed"))
+		}
+		b.clientCert = viper.GetString("broker.clientCert")
+		b.clientKey = viper.GetString("broker.clientKey")
 	}
 	if viper.IsSet("broker.cacert") {
 		b.cacert = viper.GetString("broker.cacert")
-	}
-	if viper.IsSet("broker.clientCert") {
-		b.clientCert = viper.GetString("broker.clientCert")
-	}
-	if viper.IsSet("broker.clientKey") {
-		b.clientKey = viper.GetString("broker.clientKey")
 	}
 
 	c.Broker = b
@@ -165,5 +165,4 @@ func parseConfig() {
 			panic(fmt.Errorf("fatal error config file: %s", err))
 		}
 	}
-
 }

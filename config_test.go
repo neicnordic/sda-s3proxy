@@ -31,6 +31,40 @@ func TestInitialization_ConfFile(t *testing.T) {
 	assert.NotPanics(t, func() { NewConfig() })
 }
 
+func TestInitialization_OnlyrequiredAttributes(t *testing.T) {
+	viper.Reset()
+	for _, s := range requiredConfVars {
+		viper.Set(s, "dummy-value")
+	}
+	assert.NotPanics(t, func() { NewConfig() })
+}
+
+func TestInitialization_NoReqsFail(t *testing.T) {
+	// Leave one out validation
+	for idx := range requiredConfVars {
+		viper.Reset()
+		for innerIdx, s := range requiredConfVars {
+			if idx != innerIdx {
+				viper.Set(s, "dummy-value")
+			}
+		}
+		assert.Panics(t, func() { NewConfig() })
+	}
+}
+
+func TestInitialization_verifyPeerRequiresCerts(t *testing.T) {
+	viper.Reset()
+	for _, s := range requiredConfVars {
+		viper.Set(s, "dummy-value")
+	}
+	viper.Set("broker.verifyPeer", "true")
+	assert.Panics(t, func() { NewConfig() })
+
+	viper.Set("broker.clientCert", "dummy-value")
+	viper.Set("broker.clientKey", "dummy-value")
+	assert.NotPanics(t, func() { NewConfig() })
+}
+
 // what does this test test?
 /*
 func TestInitialization_NoCaCerts(t *testing.T) {
