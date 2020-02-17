@@ -18,7 +18,7 @@ type FakeServer struct {
 }
 
 func startFakeServer(port string) *FakeServer {
-	l, err := net.Listen("tcp", "127.0.0.1:" + port)
+	l, err := net.Listen("tcp", "127.0.0.1:"+port)
 	if err != nil {
 		panic(fmt.Errorf("Can't create mock server for testing: %s", err))
 	}
@@ -70,7 +70,7 @@ type AlwaysDeny struct{}
 
 // Authenticate authenticates everyone.
 func (u *AlwaysDeny) Authenticate(r *http.Request) error {
-	return fmt.Errorf("Denied!")
+	return fmt.Errorf("denied")
 }
 
 func TestServeHTTP_disallowed(t *testing.T) {
@@ -249,9 +249,9 @@ func TestServeHTTP_allowed(t *testing.T) {
 	assert.Equal(t, true, f.PingedAndRestore())
 	assert.Equal(t, false, messenger.CheckAndRestore())
 
-    // Going through the different extra stuff that can be in the get request
-    // that trigger different code paths in the code.
-    // Delimiter alone
+	// Going through the different extra stuff that can be in the get request
+	// that trigger different code paths in the code.
+	// Delimiter alone
 	r.Method = "GET"
 	r.URL, _ = url.Parse("/username/file?delimiter=puppe")
 	w = httptest.NewRecorder()
@@ -260,7 +260,7 @@ func TestServeHTTP_allowed(t *testing.T) {
 	assert.Equal(t, true, f.PingedAndRestore())
 	assert.Equal(t, false, messenger.CheckAndRestore())
 
-    // Delimiter alone together with prefix
+	// Delimiter alone together with prefix
 	r.Method = "GET"
 	r.URL, _ = url.Parse("/username/file?delimiter=puppe&prefix=asdf")
 	w = httptest.NewRecorder()
@@ -269,7 +269,7 @@ func TestServeHTTP_allowed(t *testing.T) {
 	assert.Equal(t, true, f.PingedAndRestore())
 	assert.Equal(t, false, messenger.CheckAndRestore())
 
-    // Location parameter
+	// Location parameter
 	r.Method = "GET"
 	r.URL, _ = url.Parse("/username/file?location=fnuffe")
 	w = httptest.NewRecorder()

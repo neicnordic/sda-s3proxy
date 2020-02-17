@@ -19,7 +19,7 @@ func TestHttpsGetCheck(t *testing.T) {
 		BrokerConfig{host: "localhost", port: "8080"},
 		new(tls.Config))
 
-	assert.NoError(t, h.httpsGetCheck("https://www.nbis.se", 5*time.Second)())
+	assert.NoError(t, h.httpsGetCheck("https://www.nbis.se", 10*time.Second)())
 	assert.Error(t, h.httpsGetCheck("https://www.nbis.se/nonexistent", 5*time.Second)(), "404 should fail")
 }
 
