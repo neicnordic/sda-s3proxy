@@ -8,35 +8,49 @@ import (
 	"time"
 
 	"github.com/heptiolabs/healthcheck"
-	"github.com/spf13/viper"
 )
 
-func healthchecks(port int) {
+// HealthCheck registers and endpoint for healthchecking the service
+type HealthCheck struct {
+	port      int
+	s3URL     string
+	brokerURL string
+	tlsConfig *tls.Config
+}
+
+// NewHealthCheck creates a new healthchecker. It needs to know where to find
+// the backend S3 storage and the Message Broker so it can report readiness.
+func NewHealthCheck(port int, s3 S3Config, broker BrokerConfig, tlsConfig *tls.Config) *HealthCheck {
+	s3URL := s3.url
+	if s3.readypath != "" {
+		s3URL = s3.url + s3.readypath
+	}
+
+	brokerURL := broker.host + ":" + broker.port
+
+	return &HealthCheck{port, s3URL, brokerURL, tlsConfig}
+}
+
+// RunHealthChecks should be run as a go routine in the main app. It registers
+// the healthcheck handler on the port specified in when creating a new
+// healthcheck.
+func (h *HealthCheck) RunHealthChecks() {
 	health := healthcheck.NewHandler()
 
 	health.AddLivenessCheck("goroutine-threshold", healthcheck.GoroutineCountCheck(100))
 
-	upstreamURL := viper.GetString("aws.url")
-	if viper.IsSet("aws.readypath") {
-		upstreamURL = viper.GetString("aws.url") + viper.GetString("aws.readypath")
-	}
-	health.AddReadinessCheck("S3-backend-http", httpsGetCheck(upstreamURL, 5000*time.Millisecond))
+	health.AddReadinessCheck("S3-backend-http", h.httpsGetCheck(h.s3URL, 5000*time.Millisecond))
 
-	brokerURL := viper.GetString("broker.host") + ":" + viper.GetString("broker.port")
-	health.AddReadinessCheck(
-		"broker-tcp",
-		healthcheck.TCPDialCheck(brokerURL, 50*time.Millisecond))
+	health.AddReadinessCheck("broker-tcp", healthcheck.TCPDialCheck(h.brokerURL, 50*time.Millisecond))
 
-	addr := ":" + strconv.Itoa(port)
-
-	if err = http.ListenAndServe(addr, health); err != nil {
+	addr := ":" + strconv.Itoa(h.port)
+	if err := http.ListenAndServe(addr, health); err != nil {
 		panic(err)
 	}
 }
 
-func httpsGetCheck(url string, timeout time.Duration) healthcheck.Check {
-	cfg := &tls.Config{}
-	cfg.RootCAs = SystemCAs
+func (h *HealthCheck) httpsGetCheck(url string, timeout time.Duration) healthcheck.Check {
+	cfg := h.tlsConfig
 	tr := &http.Transport{TLSClientConfig: cfg}
 	client := http.Client{
 		Transport: tr,
