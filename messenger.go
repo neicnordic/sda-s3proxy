@@ -4,13 +4,20 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/spf13/viper"
 	"log"
 	"net/http"
 	"regexp"
-	"strconv"
+	//"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 // Checksum used in the message
@@ -44,17 +51,17 @@ type AMQPMessenger struct {
 // CreateMessageFromRequest is a function that can take a http request and
 // figure out the correct message to send from it.
 func CreateMessageFromRequest(r *http.Request) (Event, error) {
-	contentLength, err := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
-	if err != nil {
-		return Event{}, fmt.Errorf("can't parse content-length: %s", err)
-	}
-
 	// Extract username for request's url path
 	re := regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 
 	event := Event{}
 	checksum := Checksum{}
+
+	err := RequestInfo(r.URL.Path, &event, &checksum)
+	if err != nil {
+		log.Fatalf("Could not get checksum information: %s", err)
+	}
 
 	// Case for simple upload
 	if r.Method == http.MethodPut {
@@ -65,15 +72,64 @@ func CreateMessageFromRequest(r *http.Request) (Event, error) {
 	} else {
 		return Event{}, fmt.Errorf("upload method has to be POST or PUT")
 	}
-	event.Filesize = contentLength
 	event.Filepath = r.URL.Path
 	event.Username = username
-	checksum.Type = "sha256"
-	checksum.Value = r.Header.Get("x-amz-content-sha256")
+	checksum.Type = "etag"
 	event.Checksum = checksum
 
 	return event, nil
 }
+
+func RequestInfo(fullPath string, event *Event, checksum *Checksum) error {
+	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
+
+	// Used to disable certificate check
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
+	mySession, err := session.NewSession(&aws.Config{
+		Region:           aws.String(viper.GetString("aws.region")),
+		Endpoint:         aws.String(viper.GetString("aws.url")),
+		DisableSSL:       aws.Bool(true),
+		S3ForcePathStyle: aws.Bool(true),
+		Credentials:      credentials.NewStaticCredentials(viper.GetString("aws.accessKey"), viper.GetString("aws.secretKey"), ""),
+		// Used to disable certificate check
+		HTTPClient: client,
+	})
+	if err != nil {
+		return err
+	}
+
+	svc := s3.New(mySession)
+	input := &s3.ListObjectsV2Input{
+		Bucket:  aws.String(viper.GetString("aws.bucket")),
+		MaxKeys: aws.Int64(2),
+		Prefix:  aws.String(filePath),
+	}
+
+	result, err := svc.ListObjectsV2(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case s3.ErrCodeNoSuchBucket:
+				fmt.Println(s3.ErrCodeNoSuchBucket, aerr.Error())
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err)
+		}
+		return err
+	}
+	checksum.Value = strings.ReplaceAll(*result.Contents[0].ETag, "\"", "")
+	event.Filesize = *result.Contents[0].Size
+	return nil
+}
+
 
 // NewAMQPMessenger creates a new messenger that can communicate with a backend
 // amqp server.

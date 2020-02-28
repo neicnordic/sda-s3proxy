@@ -187,7 +187,7 @@ func (p *Proxy) resignHeader(r *http.Request, accessKey string, secretKey string
 	return s3signer.SignV4(*r, accessKey, secretKey, "", p.s3.region)
 }
 
-// Not necesarily a function on the struct since it does not use any of the
+// Not necessarily a function on the struct since it does not use any of the
 // members.
 func (p *Proxy) detectRequestType(r *http.Request) S3RequestType {
 	switch r.Method {
