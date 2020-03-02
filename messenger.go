@@ -80,6 +80,8 @@ func CreateMessageFromRequest(r *http.Request) (Event, error) {
 	return event, nil
 }
 
+// RequestInfo is a function that makes a request to the S3 and collects
+// the etag and size information for the uploaded document
 func RequestInfo(fullPath string, event *Event, checksum *Checksum) error {
 	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
 
@@ -176,7 +178,6 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
 }
 
 // SendMessage sends message to RabbitMQ if the upload is finished
-// TODO: Use the actual username in both cases and size, checksum for multipart upload
 func (m *AMQPMessenger) SendMessage(message Event) error {
 	// Set channel
 	if e := m.channel.Confirm(false); e != nil {
