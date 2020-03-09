@@ -3,6 +3,12 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/spf13/viper"
 	"io"
 	"net/http"
 	"regexp"
@@ -98,7 +104,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 
 	// Send message to upstream
 	if p.uploadFinishedSuccessfully(r, s3response) {
-		message, _ := CreateMessageFromRequest(r)
+		message, _ := p.CreateMessageFromRequest(r)
 		if err = p.messenger.SendMessage(message); err != nil {
 			log.Printf("error when sending message: %v", err)
 		}
@@ -230,4 +236,88 @@ func (p *Proxy) detectRequestType(r *http.Request) S3RequestType {
 		log.Debug("detect Other")
 		return Other
 	}
+}
+
+// CreateMessageFromRequest is a function that can take a http request and
+// figure out the correct message to send from it.
+func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
+	// Extract username for request's url path
+	re := regexp.MustCompile("/([^/]+)/")
+	username := re.FindStringSubmatch(r.URL.Path)[1]
+
+	event := Event{}
+	checksum := Checksum{}
+
+	err := p.RequestInfo(r.URL.Path, &event, &checksum)
+	if err != nil {
+		log.Fatalf("Could not get checksum information: %s", err)
+	}
+
+	// Case for simple upload
+	if r.Method == http.MethodPut {
+		event.Operation = "upload"
+		// Case for multi-part upload
+	} else if r.Method == http.MethodPost {
+		event.Operation = "multipart-upload"
+	} else {
+		return Event{}, fmt.Errorf("upload method has to be POST or PUT")
+	}
+	event.Filepath = r.URL.Path
+	event.Username = username
+	checksum.Type = "etag"
+	event.Checksum = checksum
+
+	return event, nil
+}
+
+// RequestInfo is a function that makes a request to the S3 and collects
+// the etag and size information for the uploaded document
+func (p *Proxy) RequestInfo(fullPath string, event *Event, checksum *Checksum) error {
+	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
+
+	// Used to disable certificate check
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
+	mySession, err := session.NewSession(&aws.Config{
+		Region:           aws.String(viper.GetString("aws.region")),
+		Endpoint:         aws.String(viper.GetString("aws.url")),
+		DisableSSL:       aws.Bool(true),
+		S3ForcePathStyle: aws.Bool(true),
+		Credentials:      credentials.NewStaticCredentials(viper.GetString("aws.accessKey"), viper.GetString("aws.secretKey"), ""),
+		// Used to disable certificate check
+		HTTPClient: client,
+	})
+	if err != nil {
+		return err
+	}
+
+	svc := s3.New(mySession)
+	input := &s3.ListObjectsV2Input{
+		Bucket:  aws.String(viper.GetString("aws.bucket")),
+		MaxKeys: aws.Int64(2),
+		Prefix:  aws.String(filePath),
+	}
+
+	result, err := svc.ListObjectsV2(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case s3.ErrCodeNoSuchBucket:
+				fmt.Println(s3.ErrCodeNoSuchBucket, aerr.Error())
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err)
+		}
+		return err
+	}
+	checksum.Value = strings.ReplaceAll(*result.Contents[0].ETag, "\"", "")
+	event.Filesize = *result.Contents[0].Size
+	return nil
 }
