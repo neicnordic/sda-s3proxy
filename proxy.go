@@ -3,17 +3,18 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"io"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/spf13/viper"
-	"io"
-	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
 
 	"github.com/minio/minio-go/v6/pkg/s3signer"
 
@@ -248,7 +249,7 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 	event := Event{}
 	checksum := Checksum{}
 
-	err := p.RequestInfo(r.URL.Path, &event, &checksum)
+	err := p.requestInfo(r.URL.Path, &event, &checksum)
 	if err != nil {
 		log.Fatalf("Could not get checksum information: %s", err)
 	}
@@ -272,23 +273,23 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 
 // RequestInfo is a function that makes a request to the S3 and collects
 // the etag and size information for the uploaded document
-func (p *Proxy) RequestInfo(fullPath string, event *Event, checksum *Checksum) error {
+func (p *Proxy) requestInfo(fullPath string, event *Event, checksum *Checksum) error {
 	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
 
 	// Used to disable certificate check
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
+	//tr := &http.Transport{
+	//	TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	//}
+	//client := &http.Client{Transport: tr}
 
 	mySession, err := session.NewSession(&aws.Config{
-		Region:           aws.String(viper.GetString("aws.region")),
-		Endpoint:         aws.String(viper.GetString("aws.url")),
+		Region:           aws.String(p.s3.region),
+		Endpoint:         aws.String(p.s3.url),
 		DisableSSL:       aws.Bool(true),
 		S3ForcePathStyle: aws.Bool(true),
-		Credentials:      credentials.NewStaticCredentials(viper.GetString("aws.accessKey"), viper.GetString("aws.secretKey"), ""),
+		Credentials:      credentials.NewStaticCredentials(p.s3.accessKey, p.s3.secretKey, ""),
 		// Used to disable certificate check
-		HTTPClient: client,
+		//HTTPClient: client,
 	})
 	if err != nil {
 		return err
@@ -296,7 +297,7 @@ func (p *Proxy) RequestInfo(fullPath string, event *Event, checksum *Checksum) e
 
 	svc := s3.New(mySession)
 	input := &s3.ListObjectsV2Input{
-		Bucket:  aws.String(viper.GetString("aws.bucket")),
+		Bucket:  aws.String(p.s3.bucket),
 		MaxKeys: aws.Int64(2),
 		Prefix:  aws.String(filePath),
 	}
