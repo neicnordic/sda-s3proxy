@@ -26,7 +26,6 @@ func startFakeServer(port string) *FakeServer {
 	f := FakeServer{}
 	foo := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.pinged = true
-		//f.resp = "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>test</Name><Prefix>/elexirid/file.txt</Prefix><KeyCount>1</KeyCount><MaxKeys>2</MaxKeys><Delimiter></Delimiter><IsTruncated>false</IsTruncated><Contents><Key>/elexirid/file.txt</Key><LastModified>2020-03-10T13:20:15.000Z</LastModified><ETag>&#34;0a44282bd39178db9680f24813c41aec-1&#34;</ETag><Size>5</Size><Owner><ID></ID><DisplayName></DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>"
 		fmt.Fprintf(w, f.resp)
 	})
 	ts := httptest.NewUnstartedServer(foo)

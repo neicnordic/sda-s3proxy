@@ -248,8 +248,9 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 
 	event := Event{}
 	checksum := Checksum{}
+	var err error
 
-	err := p.requestInfo(r.URL.Path, &event, &checksum)
+	checksum.Value, event.Filesize, err = p.requestInfo(r.URL.Path)
 	if err != nil {
 		log.Fatalf("Could not get checksum information: %s", err)
 	}
@@ -273,14 +274,8 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 
 // RequestInfo is a function that makes a request to the S3 and collects
 // the etag and size information for the uploaded document
-func (p *Proxy) requestInfo(fullPath string, event *Event, checksum *Checksum) error {
+func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
-
-	// Used to disable certificate check
-	//tr := &http.Transport{
-	//	TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	//}
-	//client := &http.Client{Transport: tr}
 
 	mySession, err := session.NewSession(&aws.Config{
 		Region:           aws.String(p.s3.region),
@@ -288,17 +283,15 @@ func (p *Proxy) requestInfo(fullPath string, event *Event, checksum *Checksum) e
 		DisableSSL:       aws.Bool(true),
 		S3ForcePathStyle: aws.Bool(true),
 		Credentials:      credentials.NewStaticCredentials(p.s3.accessKey, p.s3.secretKey, ""),
-		// Used to disable certificate check
-		//HTTPClient: client,
 	})
 	if err != nil {
-		return err
+		return "", 0, err
 	}
 
 	svc := s3.New(mySession)
 	input := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(p.s3.bucket),
-		MaxKeys: aws.Int64(2),
+		MaxKeys: aws.Int64(1),
 		Prefix:  aws.String(filePath),
 	}
 
@@ -316,9 +309,7 @@ func (p *Proxy) requestInfo(fullPath string, event *Event, checksum *Checksum) e
 			// Message from an error.
 			fmt.Println(err)
 		}
-		return err
+		return "", 0, err
 	}
-	checksum.Value = strings.ReplaceAll(*result.Contents[0].ETag, "\"", "")
-	event.Filesize = *result.Contents[0].Size
-	return nil
+	return strings.ReplaceAll(*result.Contents[0].ETag, "\"", ""), *result.Contents[0].Size, nil
 }
