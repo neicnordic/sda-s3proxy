@@ -9,6 +9,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/spf13/viper"
+
 	"github.com/minio/minio-go/v6/pkg/s3signer"
 
 	log "github.com/sirupsen/logrus"
@@ -98,7 +105,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 
 	// Send message to upstream
 	if p.uploadFinishedSuccessfully(r, s3response) {
-		message, _ := CreateMessageFromRequest(r)
+		message, _ := p.CreateMessageFromRequest(r)
 		if err = p.messenger.SendMessage(message); err != nil {
 			log.Printf("error when sending message: %v", err)
 		}
@@ -187,7 +194,7 @@ func (p *Proxy) resignHeader(r *http.Request, accessKey string, secretKey string
 	return s3signer.SignV4(*r, accessKey, secretKey, "", p.s3.region)
 }
 
-// Not necesarily a function on the struct since it does not use any of the
+// Not necessarily a function on the struct since it does not use any of the
 // members.
 func (p *Proxy) detectRequestType(r *http.Request) S3RequestType {
 	switch r.Method {
@@ -230,4 +237,79 @@ func (p *Proxy) detectRequestType(r *http.Request) S3RequestType {
 		log.Debug("detect Other")
 		return Other
 	}
+}
+
+// CreateMessageFromRequest is a function that can take a http request and
+// figure out the correct message to send from it.
+func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
+	// Extract username for request's url path
+	re := regexp.MustCompile("/([^/]+)/")
+	username := re.FindStringSubmatch(r.URL.Path)[1]
+
+	event := Event{}
+	checksum := Checksum{}
+	var err error
+
+	checksum.Value, event.Filesize, err = p.requestInfo(r.URL.Path)
+	if err != nil {
+		log.Fatalf("Could not get checksum information: %s", err)
+	}
+
+	// Case for simple upload
+	if r.Method == http.MethodPut {
+		event.Operation = "upload"
+		// Case for multi-part upload
+	} else if r.Method == http.MethodPost {
+		event.Operation = "multipart-upload"
+	} else {
+		return Event{}, fmt.Errorf("upload method has to be POST or PUT")
+	}
+	event.Filepath = r.URL.Path
+	event.Username = username
+	checksum.Type = "etag"
+	event.Checksum = checksum
+
+	return event, nil
+}
+
+// RequestInfo is a function that makes a request to the S3 and collects
+// the etag and size information for the uploaded document
+func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
+	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
+
+	mySession, err := session.NewSession(&aws.Config{
+		Region:           aws.String(p.s3.region),
+		Endpoint:         aws.String(p.s3.url),
+		DisableSSL:       aws.Bool(true),
+		S3ForcePathStyle: aws.Bool(true),
+		Credentials:      credentials.NewStaticCredentials(p.s3.accessKey, p.s3.secretKey, ""),
+	})
+	if err != nil {
+		return "", 0, err
+	}
+
+	svc := s3.New(mySession)
+	input := &s3.ListObjectsV2Input{
+		Bucket:  aws.String(p.s3.bucket),
+		MaxKeys: aws.Int64(1),
+		Prefix:  aws.String(filePath),
+	}
+
+	result, err := svc.ListObjectsV2(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case s3.ErrCodeNoSuchBucket:
+				fmt.Println(s3.ErrCodeNoSuchBucket, aerr.Error())
+			default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			// Print the error, cast err to awserr.Error to get the Code and
+			// Message from an error.
+			fmt.Println(err)
+		}
+		return "", 0, err
+	}
+	return strings.ReplaceAll(*result.Contents[0].ETag, "\"", ""), *result.Contents[0].Size, nil
 }

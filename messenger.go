@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
-	"regexp"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
@@ -39,40 +36,6 @@ type AMQPMessenger struct {
 	channel    *amqp.Channel
 	exchange   string
 	routingKey string
-}
-
-// CreateMessageFromRequest is a function that can take a http request and
-// figure out the correct message to send from it.
-func CreateMessageFromRequest(r *http.Request) (Event, error) {
-	contentLength, err := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
-	if err != nil {
-		return Event{}, fmt.Errorf("can't parse content-length: %s", err)
-	}
-
-	// Extract username for request's url path
-	re := regexp.MustCompile("/([^/]+)/")
-	username := re.FindStringSubmatch(r.URL.Path)[1]
-
-	event := Event{}
-	checksum := Checksum{}
-
-	// Case for simple upload
-	if r.Method == http.MethodPut {
-		event.Operation = "upload"
-		// Case for multi-part upload
-	} else if r.Method == http.MethodPost {
-		event.Operation = "multipart-upload"
-	} else {
-		return Event{}, fmt.Errorf("upload method has to be POST or PUT")
-	}
-	event.Filesize = contentLength
-	event.Filepath = r.URL.Path
-	event.Username = username
-	checksum.Type = "sha256"
-	checksum.Value = r.Header.Get("x-amz-content-sha256")
-	event.Checksum = checksum
-
-	return event, nil
 }
 
 // NewAMQPMessenger creates a new messenger that can communicate with a backend
@@ -120,7 +83,6 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
 }
 
 // SendMessage sends message to RabbitMQ if the upload is finished
-// TODO: Use the actual username in both cases and size, checksum for multipart upload
 func (m *AMQPMessenger) SendMessage(message Event) error {
 	// Set channel
 	if e := m.channel.Confirm(false); e != nil {
