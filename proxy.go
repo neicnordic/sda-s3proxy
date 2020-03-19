@@ -83,12 +83,19 @@ func (p *Proxy) notAuthorized(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
-	if err := p.auth.Authenticate(r); err != nil {
+	if err := p.auth.CheckJWT(r); err != nil {
 		log.Debug("Not authenticated !!!!!! !!  !!!")
 		log.Debug(err)
 		p.notAuthorized(w, r)
 		return
 	}
+
+	/*if err := p.auth.Authenticate(r); err != nil {
+		log.Debug("Not authenticated !!!!!! !!  !!!")
+		log.Debug(err)
+		p.notAuthorized(w, r)
+		return
+	}*/
 
 	log.Debug("Prepend")
 	p.prependBucketToHostPath(r)
@@ -187,6 +194,7 @@ func (p *Proxy) prependBucketToHostPath(r *http.Request) {
 // Used for for creating a signature for with the default
 // credentials of the s3 service and the user's signature (authentication)
 func (p *Proxy) resignHeader(r *http.Request, accessKey string, secretKey string, backendURL string) *http.Request {
+	r.Header.Del("X-Amz-Security-Token")
 	if strings.Contains(backendURL, "//") {
 		host := strings.SplitN(backendURL, "//", 2)
 		r.Host = host[1]
@@ -277,12 +285,22 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
 
+	// Used to disable certificate check
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
+
+
 	mySession, err := session.NewSession(&aws.Config{
 		Region:           aws.String(p.s3.region),
 		Endpoint:         aws.String(p.s3.url),
 		DisableSSL:       aws.Bool(true),
 		S3ForcePathStyle: aws.Bool(true),
 		Credentials:      credentials.NewStaticCredentials(p.s3.accessKey, p.s3.secretKey, ""),
+		// Used to disable certificate check
+		HTTPClient: client,
 	})
 	if err != nil {
 		return "", 0, err

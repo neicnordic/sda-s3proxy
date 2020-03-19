@@ -5,10 +5,13 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/minio/minio-go/v6/pkg/s3signer"
 	log "github.com/sirupsen/logrus"
 )
@@ -19,6 +22,7 @@ type Authenticator interface {
 	// Authenticate inspects an http.Request and returns nil if the user is
 	// authenticated, otherwise an error is returned.
 	Authenticate(r *http.Request) error
+	CheckJWT(r *http.Request) error
 }
 
 // AlwaysAllow is an Authenticator that always authenticates
@@ -63,7 +67,7 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 		return fmt.Errorf("user not found in signature")
 	}
 
-	if curSecretKey, err := u.secretFromID(curAccessKey); err == nil {
+	if curSecretKey, err := u.                                 secretFromID(curAccessKey); err == nil {
 		if r.Method == http.MethodGet {
 			re := regexp.MustCompile("Signature=(.*)")
 
@@ -126,3 +130,40 @@ func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 	}
 	return "", fmt.Errorf("can't find id")
 }
+
+func (u *ValidateFromFile) CheckJWT(r *http.Request) error {
+	publicKeyPath := "/Users/dimitris/Testing/jwt/pub.rsa"
+	token := r.Header.Get("X-Amz-Security-Token")
+	isValid, err := verifyToken(token, publicKeyPath)
+	if err != nil {
+		fmt.Println(err)
+		return fmt.Errorf("user token not valid")
+	}
+
+	if isValid {
+		fmt.Println("The token is valid")
+	} else {
+		fmt.Println("The token is invalid")
+		return fmt.Errorf("user token not valid")
+	}
+	return nil
+}
+
+func verifyToken(token, publicKeyPath string) (bool, error) {
+	keyData, err := ioutil.ReadFile(publicKeyPath)
+	if err != nil {
+		return false, err
+	}
+	key, err := jwt.ParseECPublicKeyFromPEM(keyData)
+	if err != nil {
+		return false, err
+	}
+
+	parts := strings.Split(token, ".")
+	err = jwt.SigningMethodES256.Verify(strings.Join(parts[0:2], "."), parts[2], key)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
