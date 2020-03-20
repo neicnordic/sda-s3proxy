@@ -2,18 +2,17 @@ package main
 
 import (
 	"bufio"
+	"crypto/ecdsa"
 	"encoding/csv"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
+	"github.com/minio/minio-go/v6/pkg/s3signer"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
-
-	"github.com/dgrijalva/jwt-go"
-	"github.com/minio/minio-go/v6/pkg/s3signer"
-	log "github.com/sirupsen/logrus"
 )
 
 // Authenticator is an interface that takes care of authenticating users to the
@@ -52,15 +51,14 @@ func NewValidateFromFile(filename string) *ValidateFromFile {
 // ValidateFromToken is an Authenticator that reads the public key from
 // supplied file
 type ValidateFromToken struct {
-	serverkey string
+	pubkey string
 }
 
 // NewValidateFromToken returns a new ValidateFromToken, reading the key from
 // the supplied file.
-func NewValidateFromToken(serverkey string) *ValidateFromToken {
-	return &ValidateFromToken{serverkey}
+func NewValidateFromToken(pubkey string) *ValidateFromToken {
+	return &ValidateFromToken{pubkey}
 }
-
 
 // Authenticate checks whether the http.Request is signed by any of the users
 // in the supplied file.
@@ -143,17 +141,23 @@ func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 	return "", fmt.Errorf("can't find id")
 }
 
+// Authenticate verifies that the token included in the http.Request
+// is valid
 func (u *ValidateFromToken) Authenticate(r *http.Request) error {
-	publicKeyPath := u.serverkey
 
+	key, err := u.getKey()
+	if err != nil {
+		return err
+	}
+
+	// Verify signature by parsing the token with the given key
 	tokenStr := r.Header.Get("X-Amz-Security-Token")
-	isValid, err := verifyToken(tokenStr, publicKeyPath)
-	if err != nil || !isValid {
-		fmt.Println(err)
+	token, err := jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
+	if err != nil {
 		return fmt.Errorf("user token not valid")
 	}
 
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) { return nil, nil })
+	// Check whether token username and filepath match
 	re := regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 	fmt.Println(username)
@@ -166,21 +170,15 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 	return nil
 }
 
-func verifyToken(token, publicKeyPath string) (bool, error) {
-	keyData, err := ioutil.ReadFile(publicKeyPath)
+func (u *ValidateFromToken) getKey() (*ecdsa.PublicKey, error) {
+	// Get the public key to verify jwt token
+	keyData, err := ioutil.ReadFile(u.pubkey)
 	if err != nil {
-		return false, err
+		return nil, fmt.Errorf("token file error")
 	}
-	key, err := jwt.ParseECPublicKeyFromPEM(keyData)
+	key, err  := jwt.ParseECPublicKeyFromPEM(keyData)
 	if err != nil {
-		return false, err
+		return nil, fmt.Errorf("jwt key parsing error")
 	}
-
-	parts := strings.Split(token, ".")
-	err = jwt.SigningMethodES256.Verify(strings.Join(parts[0:2], "."), parts[2], key)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	return key, nil
 }
-

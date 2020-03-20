@@ -12,7 +12,7 @@ var (
 	requiredConfVars = []string{
 		"aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket",
 		"broker.host", "broker.port", "broker.user", "broker.password", "broker.vhost", "broker.exchange", "broker.routingKey",
-		"server.users",
+		"server.users", "server.pubkey",
 	}
 )
 
@@ -46,10 +46,10 @@ type BrokerConfig struct {
 
 // ServerConfig stores general server information
 type ServerConfig struct {
-	cert  string
-	key   string
-	users string
-	serverkey string
+	cert      string
+	key       string
+	users     string
+	pubkey    string
 }
 
 // Config is a parent object for all the different configuration parts
@@ -128,7 +128,7 @@ func (c *Config) readConfig() {
 
 	s.users = viper.GetString("server.users")
 
-	s.serverkey = viper.GetString("server.serverkey")
+	s.pubkey = viper.GetString("server.pubkey")
 
 	if viper.IsSet("server.cert") {
 		s.cert = viper.GetString("server.cert")

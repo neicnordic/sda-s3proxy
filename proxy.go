@@ -291,8 +291,6 @@ func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 	}
 	client := &http.Client{Transport: tr}
 
-
-
 	mySession, err := session.NewSession(&aws.Config{
 		Region:           aws.String(p.s3.region),
 		Endpoint:         aws.String(p.s3.url),

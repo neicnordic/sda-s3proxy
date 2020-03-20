@@ -17,7 +17,7 @@ func main() {
 	messenger := NewAMQPMessenger(config.Broker, tlsConfig)
 	log.Print("Messenger acquired ", messenger)
 
-	auth := NewValidateFromToken(config.Server.serverkey)
+	auth := NewValidateFromToken(config.Server.pubkey)
 	proxy := NewProxy(config.S3, auth, messenger, tlsConfig)
 
 	log.Print("Got the Proxy ", proxy)

@@ -67,6 +67,7 @@ services:
       - SERVER_CERT=/certs/proxy.crt
       - SERVER_KEY=/certs/proxy.key
       - SERVER_USERS=/users.csv
+      - SERVER_PUBKEY=/pubkey.pub
     volumes:
       - ./certs/ca.crt:/certs/ca.crt
       - ./certs/client.crt:/certs/client.crt
@@ -74,6 +75,7 @@ services:
       - ./certs/proxy.crt:/certs/proxy.crt
       - ./certs/proxy.key:/certs/proxy.key
       - ./users.csv:/users.csv
+      - ./pubkey.pub:/pubkey.pub
     ports:
       - "8000:8000"
       - "8001:8001"
