@@ -67,7 +67,7 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 		return fmt.Errorf("user not found in signature")
 	}
 
-	if curSecretKey, err := u.                                 secretFromID(curAccessKey); err == nil {
+	if curSecretKey, err := u.secretFromID(curAccessKey); err == nil {
 		if r.Method == http.MethodGet {
 			re := regexp.MustCompile("Signature=(.*)")
 
@@ -133,19 +133,24 @@ func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 
 func (u *ValidateFromFile) CheckJWT(r *http.Request) error {
 	publicKeyPath := "/Users/dimitris/Testing/jwt/pub.rsa"
-	token := r.Header.Get("X-Amz-Security-Token")
-	isValid, err := verifyToken(token, publicKeyPath)
-	if err != nil {
+
+	tokenStr := r.Header.Get("X-Amz-Security-Token")
+	isValid, err := verifyToken(tokenStr, publicKeyPath)
+	if err != nil || !isValid {
 		fmt.Println(err)
 		return fmt.Errorf("user token not valid")
 	}
 
-	if isValid {
-		fmt.Println("The token is valid")
-	} else {
-		fmt.Println("The token is invalid")
-		return fmt.Errorf("user token not valid")
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) { return nil, nil })
+	re := regexp.MustCompile("/([^/]+)/")
+	username := re.FindStringSubmatch(r.URL.Path)[1]
+	fmt.Println(username)
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		if claims["sub"] != username {
+			return fmt.Errorf("user token not valid")
+		}
 	}
+
 	return nil
 }
 
