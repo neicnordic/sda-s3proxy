@@ -90,13 +90,6 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/*if err := p.auth.Authenticate(r); err != nil {
-		log.Debug("Not authenticated !!!!!! !!  !!!")
-		log.Debug(err)
-		p.notAuthorized(w, r)
-		return
-	}*/
-
 	log.Debug("Prepend")
 	p.prependBucketToHostPath(r)
 
@@ -285,20 +278,13 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
 
-	// Used to disable certificate check
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
-
 	mySession, err := session.NewSession(&aws.Config{
 		Region:           aws.String(p.s3.region),
 		Endpoint:         aws.String(p.s3.url),
 		DisableSSL:       aws.Bool(true),
 		S3ForcePathStyle: aws.Bool(true),
 		Credentials:      credentials.NewStaticCredentials(p.s3.accessKey, p.s3.secretKey, ""),
-		// Used to disable certificate check
-		HTTPClient: client,
+
 	})
 	if err != nil {
 		return "", 0, err
