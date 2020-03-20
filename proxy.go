@@ -284,7 +284,6 @@ func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 		DisableSSL:       aws.Bool(true),
 		S3ForcePathStyle: aws.Bool(true),
 		Credentials:      credentials.NewStaticCredentials(p.s3.accessKey, p.s3.secretKey, ""),
-
 	})
 	if err != nil {
 		return "", 0, err
