@@ -5,14 +5,15 @@ import (
 	"crypto/ecdsa"
 	"encoding/csv"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/minio/minio-go/v6/pkg/s3signer"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/minio/minio-go/v6/pkg/s3signer"
+	log "github.com/sirupsen/logrus"
 )
 
 // Authenticator is an interface that takes care of authenticating users to the
@@ -176,7 +177,7 @@ func (u *ValidateFromToken) getKey() (*ecdsa.PublicKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("token file error")
 	}
-	key, err  := jwt.ParseECPublicKeyFromPEM(keyData)
+	key, err := jwt.ParseECPublicKeyFromPEM(keyData)
 	if err != nil {
 		return nil, fmt.Errorf("jwt key parsing error")
 	}

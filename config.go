@@ -46,10 +46,10 @@ type BrokerConfig struct {
 
 // ServerConfig stores general server information
 type ServerConfig struct {
-	cert      string
-	key       string
-	users     string
-	pubkey    string
+	cert   string
+	key    string
+	users  string
+	pubkey string
 }
 
 // Config is a parent object for all the different configuration parts
