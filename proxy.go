@@ -83,7 +83,7 @@ func (p *Proxy) notAuthorized(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
-	if err := p.auth.CheckJWT(r); err != nil {
+	if err := p.auth.Authenticate(r); err != nil {
 		log.Debug("Not authenticated !!!!!! !!  !!!")
 		log.Debug(err)
 		p.notAuthorized(w, r)

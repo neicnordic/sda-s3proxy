@@ -28,3 +28,4 @@ server:
   cert: "./dev_utils/certs/proxy.crt"
   key: "./dev_utils/certs/proxy.key"
   users: "./dev_utils/users.csv"
+  serverkey: "./dev_utils/serverkey.pub"

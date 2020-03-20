@@ -22,7 +22,6 @@ type Authenticator interface {
 	// Authenticate inspects an http.Request and returns nil if the user is
 	// authenticated, otherwise an error is returned.
 	Authenticate(r *http.Request) error
-	CheckJWT(r *http.Request) error
 }
 
 // AlwaysAllow is an Authenticator that always authenticates
@@ -49,6 +48,19 @@ type ValidateFromFile struct {
 func NewValidateFromFile(filename string) *ValidateFromFile {
 	return &ValidateFromFile{filename}
 }
+
+// ValidateFromToken is an Authenticator that reads the public key from
+// supplied file
+type ValidateFromToken struct {
+	serverkey string
+}
+
+// NewValidateFromToken returns a new ValidateFromToken, reading the key from
+// the supplied file.
+func NewValidateFromToken(serverkey string) *ValidateFromToken {
+	return &ValidateFromToken{serverkey}
+}
+
 
 // Authenticate checks whether the http.Request is signed by any of the users
 // in the supplied file.
@@ -131,8 +143,8 @@ func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 	return "", fmt.Errorf("can't find id")
 }
 
-func (u *ValidateFromFile) CheckJWT(r *http.Request) error {
-	publicKeyPath := "/Users/dimitris/Testing/jwt/pub.rsa"
+func (u *ValidateFromToken) Authenticate(r *http.Request) error {
+	publicKeyPath := u.serverkey
 
 	tokenStr := r.Header.Get("X-Amz-Security-Token")
 	isValid, err := verifyToken(tokenStr, publicKeyPath)

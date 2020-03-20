@@ -49,6 +49,7 @@ type ServerConfig struct {
 	cert  string
 	key   string
 	users string
+	serverkey string
 }
 
 // Config is a parent object for all the different configuration parts
@@ -126,6 +127,8 @@ func (c *Config) readConfig() {
 	s := ServerConfig{}
 
 	s.users = viper.GetString("server.users")
+
+	s.serverkey = viper.GetString("server.serverkey")
 
 	if viper.IsSet("server.cert") {
 		s.cert = viper.GetString("server.cert")
