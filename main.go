@@ -27,8 +27,14 @@ func main() {
 	hc := NewHealthCheck(8001, config.S3, config.Broker, tlsConfig)
 	go hc.RunHealthChecks()
 
-	if e := http.ListenAndServe(":8000", nil); e != nil {
-		panic(e)
+	if config.Server.cert != "" && config.Server.key != "" {
+		if e := http.ListenAndServeTLS(":8000", config.Server.cert, config.Server.key, nil); e != nil {
+			panic(e)
+		}
+	} else {
+		if e := http.ListenAndServe(":8000", nil); e != nil {
+			panic(e)
+		}
 	}
 }
 
