@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -276,19 +278,11 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 // the etag and size information for the uploaded document
 func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
-
-	mySession, err := session.NewSession(&aws.Config{
-		Region:           aws.String(p.s3.region),
-		Endpoint:         aws.String(p.s3.url),
-		DisableSSL:       aws.Bool(true),
-		S3ForcePathStyle: aws.Bool(true),
-		Credentials:      credentials.NewStaticCredentials(p.s3.accessKey, p.s3.secretKey, ""),
-	})
+	s, err := p.newSession()
 	if err != nil {
 		return "", 0, err
 	}
-
-	svc := s3.New(mySession)
+	svc := s3.New(s)
 	input := &s3.ListObjectsV2Input{
 		Bucket:  aws.String(p.s3.bucket),
 		MaxKeys: aws.Int64(1),
@@ -312,4 +306,37 @@ func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 		return "", 0, err
 	}
 	return strings.ReplaceAll(*result.Contents[0].ETag, "\"", ""), *result.Contents[0].Size, nil
+}
+
+func (p *Proxy) newSession() (*session.Session, error) {
+	var mySession *session.Session
+	var err error
+	if p.s3.cacert != "" {
+		cert, _ := ioutil.ReadFile(p.s3.cacert)
+		cacert := bytes.NewReader(cert)
+		mySession, err = session.NewSessionWithOptions(session.Options{
+			CustomCABundle: cacert,
+			Config: aws.Config{
+				Region:           aws.String(p.s3.region),
+				Endpoint:         aws.String(p.s3.url),
+				DisableSSL:       aws.Bool(strings.HasPrefix(p.s3.url, "http:")),
+				S3ForcePathStyle: aws.Bool(true),
+				Credentials:      credentials.NewStaticCredentials(p.s3.accessKey, p.s3.secretKey, ""),
+			}})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		mySession, err = session.NewSession(&aws.Config{
+			Region:           aws.String(p.s3.region),
+			Endpoint:         aws.String(p.s3.url),
+			DisableSSL:       aws.Bool(strings.HasPrefix(p.s3.url, "http:")),
+			S3ForcePathStyle: aws.Bool(true),
+			Credentials:      credentials.NewStaticCredentials(p.s3.accessKey, p.s3.secretKey, ""),
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return mySession, nil
 }
