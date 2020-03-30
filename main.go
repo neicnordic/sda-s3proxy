@@ -13,18 +13,18 @@ import (
 func main() {
 	config := NewConfig()
 
-	tlsConfig := TLSConfig(config)
-	messenger := NewAMQPMessenger(config.Broker, tlsConfig)
+	tlsBroker := TLSConfigBroker(config)
+	tlsProxy := TLSConfigProxy(config)
+	messenger := NewAMQPMessenger(config.Broker, tlsBroker)
 	log.Print("Messenger acquired ", messenger)
 
 	auth := NewValidateFromFile(config.Server.users)
-	proxy := NewProxy(config.S3, auth, messenger, tlsConfig)
-
+	proxy := NewProxy(config.S3, auth, messenger, tlsProxy)
 	log.Print("Got the Proxy ", proxy)
 
 	http.Handle("/", proxy)
 
-	hc := NewHealthCheck(8001, config.S3, config.Broker, tlsConfig)
+	hc := NewHealthCheck(8001, config.S3, config.Broker, tlsProxy)
 	go hc.RunHealthChecks()
 
 	if config.Server.cert != "" && config.Server.key != "" {
@@ -38,10 +38,8 @@ func main() {
 	}
 }
 
-// TLSConfig is a helper method to setup TLS for all the different services, at
-// the moment the same tls configuration is used for both the message broker
-// and the S3 backend.
-func TLSConfig(c *Config) *tls.Config {
+// TLSConfigBroker is a helper method to setup TLS for the message broker
+func TLSConfigBroker(c *Config) *tls.Config {
 	cfg := new(tls.Config)
 
 	log.Printf("Setting up TLS")
@@ -95,5 +93,35 @@ func TLSConfig(c *Config) *tls.Config {
 			log.Fatalf("brokerErrMsg: No certs")
 		}
 	}
+	return cfg
+}
+
+// TLSConfigProxy is a helper method to setup TLS for the S3 backend.
+func TLSConfigProxy(c *Config) *tls.Config {
+	cfg := new(tls.Config)
+
+	log.Printf("Setting up TLS")
+
+	// Enforce TLS1.2 or higher
+	cfg.MinVersion = 2
+
+	// Read system CAs
+	var systemCAs, _ = x509.SystemCertPool()
+	if reflect.DeepEqual(systemCAs, x509.NewCertPool()) {
+		fmt.Println("creating new CApool")
+		systemCAs = x509.NewCertPool()
+	}
+	cfg.RootCAs = systemCAs
+
+	if c.S3.cacert != "" {
+		cacert, e := ioutil.ReadFile(c.S3.cacert) // #nosec this file comes from our configuration
+		if e != nil {
+			log.Fatalf("Failed to append %q to RootCAs: %v", cacert, e)
+		}
+		if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
+			log.Println("No certs appended, using system certs only")
+		}
+	}
+
 	return cfg
 }
