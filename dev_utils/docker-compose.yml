@@ -52,7 +52,7 @@ services:
       retries: 3
   s3_proxy:
     build: ../
-    image: nbisweden/s3inbox
+    image: neicnordic/sda-inbox-s3proxy
     container_name: proxy
     depends_on:
       - mq_server
