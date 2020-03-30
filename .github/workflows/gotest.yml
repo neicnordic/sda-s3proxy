@@ -7,15 +7,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go 1.13
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v1.1.2
         with:
           go-version: '1.13'
 
       - name: Check out source code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
+
+      - name: Deploy containers
+        run: cd dev_utils && docker-compose up -d s3_backend mq_server
+
+      - name: Wait for containers to start
+        run: |
+          RETRY_TIMES=0
+          for p in mq s3
+          do
+          until docker ps -f name=$p --format {{.Status}} | grep "(healthy)"
+          do echo "waiting for $p to become ready"
+          RETRY_TIMES=$((RETRY_TIMES+1));
+          if [ $RETRY_TIMES -eq 30 ]; then exit 1; fi
+          sleep 10;
+          done
+          done
 
       - name: Calc coverage 
-        run: go test -covermode=count -coverprofile=coverage.out
+        run: go test -tags live -covermode=count -coverprofile=coverage.out
 
       - name: Convert coverage to lcov
         uses: jandelgado/gcov2lcov-action@v1.0.0
