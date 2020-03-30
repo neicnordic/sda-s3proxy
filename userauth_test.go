@@ -81,3 +81,65 @@ func TestUserFileAuthenticator_ValidateSignature(t *testing.T) {
 	r.URL.Path = "/username/"
 	assert.Error(t, a.Authenticate(r))
 }
+
+func TestUserTokenAuthenticator_ReadFile(t *testing.T) {
+	var pubkeys map[string][]byte
+	egakey := "login.ega.nbis.se"
+	elkeyurl := "https://login.elixir-czech.org/oidc/jwk"
+	a := NewValidateFromToken("dev_utils/keys/", pubkeys, egakey, elkeyurl)
+
+	assert := assert.New(t)
+
+	r, err := a.getKey()
+	if assert.Nil(err) {
+		assert.Equal(r, []byte{45, 45, 45, 45, 45, 66, 69, 71, 73, 78, 32, 80, 85, 66, 76, 73, 67, 32, 75, 69, 89, 45, 45, 45, 45, 45, 10, 77, 70, 107, 119, 69, 119, 89, 72, 75, 111, 90, 73, 122, 106, 48, 67, 65, 81, 89, 73, 75, 111, 90, 73, 122, 106, 48, 68, 65, 81, 99, 68, 81, 103, 65, 69, 103, 79, 49, 105, 115, 87, 81, 43, 100, 110, 87, 47, 43, 118, 107, 101, 119, 89, 88, 104, 118, 99, 54, 100, 118, 111, 57, 106, 10, 70, 116, 114, 74, 119, 68, 108, 116, 66, 102, 114, 116, 81, 122, 98, 122, 114, 77, 77, 74, 97, 52, 74, 56, 87, 52, 90, 111, 107, 52, 107, 70, 80, 88, 71, 109, 57, 43, 50, 98, 49, 47, 86, 87, 78, 105, 73, 87, 43, 76, 108, 106, 119, 48, 50, 107, 72, 103, 61, 61, 10, 45, 45, 45, 45, 45, 69, 78, 68, 32, 80, 85, 66, 76, 73, 67, 32, 75, 69, 89, 45, 45, 45, 45, 45})
+	}
+
+	kr, r, err := a.getKeyEl()
+	if assert.Nil(err) {
+		assert.Equal(r, []byte{45, 45, 45, 45, 45, 66, 69, 71, 73, 78, 32, 82, 83, 65, 32, 80, 85, 66, 76, 73, 67, 32, 75, 69, 89, 45, 45, 45, 45, 45, 10, 77, 73, 73, 66, 73, 106, 65, 78, 66, 103, 107, 113, 104, 107, 105, 71, 57, 119, 48, 66, 65, 81, 69, 70, 65, 65, 79, 67, 65, 81, 56, 65, 77, 73, 73, 66, 67, 103, 75, 67, 65, 81, 69, 65, 117, 86, 72, 80, 102, 85, 72, 86, 69, 122, 112, 103, 79, 110, 68, 78, 105, 51, 101, 50, 10, 112, 86, 115, 98, 75, 49, 104, 115, 73, 78, 115, 84, 121, 47, 49, 109, 77, 84, 55, 115, 120, 68, 121, 80, 43, 49, 101, 81, 83, 106, 122, 89, 115, 71, 83, 85, 74, 51, 71, 72, 113, 57, 76, 104, 105, 86, 110, 100, 112, 119, 86, 56, 121, 55, 69, 110, 106, 100, 106, 48, 112, 117, 114, 121, 10, 119, 116, 119, 107, 47, 68, 56, 122, 57, 73, 73, 78, 51, 54, 82, 74, 65, 104, 49, 121, 104, 70, 102, 98, 121, 104, 76, 80, 69, 90, 108, 67, 68, 100, 122, 120, 97, 115, 53, 68, 107, 117, 57, 107, 48, 71, 114, 120, 81, 117, 86, 54, 105, 51, 48, 77, 105, 100, 56, 79, 103, 82, 81, 50, 10, 113, 51, 112, 109, 115, 107, 115, 52, 49, 52, 65, 102, 121, 54, 120, 117, 103, 67, 54, 117, 51, 105, 110, 121, 106, 76, 122, 76, 80, 114, 104, 82, 48, 111, 82, 80, 84, 71, 100, 78, 77, 88, 74, 98, 71, 119, 52, 115, 86, 84, 106, 110, 104, 53, 65, 122, 84, 103, 88, 43, 71, 114, 81, 87, 10, 66, 72, 83, 106, 73, 55, 114, 77, 84, 99, 118, 113, 98, 98, 108, 55, 77, 56, 79, 79, 104, 69, 51, 77, 81, 47, 103, 102, 86, 76, 88, 119, 109, 119, 83, 73, 111, 75, 72, 79, 68, 67, 48, 82, 79, 43, 88, 110, 86, 104, 113, 100, 55, 81, 102, 48, 116, 101, 83, 49, 74, 105, 73, 76, 10, 75, 89, 76, 108, 53, 70, 83, 47, 55, 85, 121, 50, 67, 108, 86, 114, 65, 89, 100, 50, 84, 54, 88, 57, 68, 73, 114, 47, 74, 108, 112, 82, 107, 119, 83, 68, 56, 57, 57, 112, 113, 54, 80, 82, 57, 110, 104, 75, 103, 117, 105, 112, 74, 69, 48, 113, 85, 88, 120, 97, 109, 100, 89, 57, 10, 110, 119, 73, 68, 65, 81, 65, 66, 10, 45, 45, 45, 45, 45, 69, 78, 68, 32, 82, 83, 65, 32, 80, 85, 66, 76, 73, 67, 32, 75, 69, 89, 45, 45, 45, 45, 45, 10})
+		assert.Equal(kr, "login.elixir-czech.org")
+	}
+}
+
+func TestUserTokenAuthenticator_NoFile(t *testing.T) {
+	var pubkeys map[string][]byte
+	a := NewValidateFromToken("dev_utils/keys/", pubkeys, "somerandomvalue", "yetanotherrandomvalue")
+	_, err := a.getKey()
+	assert.Error(t, err)
+
+	_, _, err = a.getKeyEl()
+	assert.Error(t, err)
+}
+
+func TestUserTokenAuthenticator_ValidateSignature(t *testing.T) {
+	// These tests should be possible to reuse with all correct authenticators somehow
+	var pubkeys map[string][]byte
+	egakey := "login.ega.nbis.se"
+	elkeyurl := "https://login.elixir-czech.org/oidc/jwk"
+
+	a := NewValidateFromToken("dev_utils/keys/", pubkeys, egakey, elkeyurl)
+	a.pubkeys = make(map[string][]byte)
+	a.pubkeys[egakey], _ = a.getKey()
+
+	// Set up request defaults
+	r, _ := http.NewRequest("", "/", nil)
+	r.Host = "localhost"
+	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsb2dpbi5lZ2EubmJpcy5zZSIsInN1YiI6ImR1bW15In0.SyZ9nZ4K9Y-fj-S37p3akwrlO6wJCLE7zXIvoTJhGxWJwHUGk-sIQLSj6K1WYjjatgGmQXF3mvmZYYLY1nkKwA")
+
+	// Test that a user can access their own bucket
+	r.URL.Path = "/dummy/"
+	s3signer.SignV4(*r, "username", "testpass", "", "us-east-1")
+	assert.Nil(t, a.Authenticate(r))
+
+	// Test that a valid user can't access someone elses bucket
+	r.URL.Path = "/notvalid/"
+	s3signer.SignV4(*r, "username", "testpass", "", "us-east-1")
+	assert.Error(t, a.Authenticate(r))
+
+	r, _ = http.NewRequest("", "/", nil)
+	r.Host = "localhost"
+	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsb2dpbi5lZ2EubmJpcy5zZSIsInN1YiI6ImR1bW15In0.SyZ9nZ4K9Y-fj-S37p3akwrlO6wJCLE7zXIvoTJhGxWJwHUGk-sIQLSj6K1WYjjatgGmQXF3mvmZYYLY1nkKwA")
+	r.URL.Path = "/username/"
+	assert.Error(t, a.Authenticate(r))
+}

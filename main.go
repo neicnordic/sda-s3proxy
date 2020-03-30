@@ -17,7 +17,20 @@ func main() {
 	messenger := NewAMQPMessenger(config.Broker, tlsConfig)
 	log.Print("Messenger acquired ", messenger)
 
-	auth := NewValidateFromToken(config.Server.pubkey)
+	var pubkeys map[string][]byte
+	auth := NewValidateFromToken(config.Server.keypath, pubkeys, config.Server.egakey, config.Server.elkeyurl)
+	auth.pubkeys = make(map[string][]byte)
+	// Load keys for JWT verification
+	key, value, err := auth.getKeyEl()
+	if err != nil {
+		panic(fmt.Errorf("either server.users or server.pubkey should be present to start the service"))
+	}
+	auth.pubkeys[key] = value
+	auth.pubkeys[config.Server.egakey], err = auth.getKey()
+	if err != nil {
+		panic(fmt.Errorf("either server.users or server.pubkey should be present to start the service"))
+	}
+
 	proxy := NewProxy(config.S3, auth, messenger, tlsConfig)
 
 	log.Print("Got the Proxy ", proxy)

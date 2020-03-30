@@ -31,11 +31,12 @@ func TestInitialization_ConfFile(t *testing.T) {
 	assert.NotPanics(t, func() { NewConfig() })
 }
 
-func TestInitialization_OnlyrequiredAttributes(t *testing.T) {
+func TestInitialization_OnlyrequiredAttributesWithFile(t *testing.T) {
 	viper.Reset()
 	for _, s := range requiredConfVars {
 		viper.Set(s, "dummy-value")
 	}
+	viper.Set("server.users", "dummy-value")
 	assert.NotPanics(t, func() { NewConfig() })
 }
 

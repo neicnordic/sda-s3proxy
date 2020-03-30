@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
-	"crypto/ecdsa"
+	"crypto/x509"
+	"encoding/pem"
+
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -12,6 +14,7 @@ import (
 	"regexp"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/minio/minio-go/v6/pkg/s3signer"
 	log "github.com/sirupsen/logrus"
 )
@@ -52,13 +55,16 @@ func NewValidateFromFile(filename string) *ValidateFromFile {
 // ValidateFromToken is an Authenticator that reads the public key from
 // supplied file
 type ValidateFromToken struct {
-	pubkey string
+	keypath  string
+	pubkeys  map[string][]byte
+	egakey   string
+	elkeyurl string
 }
 
 // NewValidateFromToken returns a new ValidateFromToken, reading the key from
 // the supplied file.
-func NewValidateFromToken(pubkey string) *ValidateFromToken {
-	return &ValidateFromToken{pubkey}
+func NewValidateFromToken(keypath string, pubkeys map[string][]byte, egakey string, elkeyurl string) *ValidateFromToken {
+	return &ValidateFromToken{keypath, pubkeys, egakey, elkeyurl}
 }
 
 // Authenticate checks whether the http.Request is signed by any of the users
@@ -145,41 +151,84 @@ func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 // Authenticate verifies that the token included in the http.Request
 // is valid
 func (u *ValidateFromToken) Authenticate(r *http.Request) error {
-
-	key, err := u.getKey()
-	if err != nil {
-		return err
-	}
-
 	// Verify signature by parsing the token with the given key
 	tokenStr := r.Header.Get("X-Amz-Security-Token")
-	token, err := jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
-	if err != nil {
-		return fmt.Errorf("user token not valid")
+
+	token, _ := jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return nil, nil })
+	if token.Header["alg"] == "ES256" {
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			strIss := fmt.Sprintf("%v", claims["iss"])
+			key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[strIss])
+			if err != nil {
+				return fmt.Errorf("failed to parse public key ega")
+			}
+			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
+			if err != nil {
+				fmt.Println(err)
+				return fmt.Errorf("user token not valid")
+			}
+		}
+	} else if token.Header["alg"] == "RS256" {
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			strIss := fmt.Sprintf("%v", claims["iss"])
+			re := regexp.MustCompile(`//([^/]*)/`)
+			key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
+			if err != nil {
+				return fmt.Errorf("failed to parse public key elixir")
+			}
+			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
+			if err != nil {
+				return fmt.Errorf("user token not valid")
+			}
+		}
 	}
 
 	// Check whether token username and filepath match
 	re := regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
-	fmt.Println(username)
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		if claims["sub"] != username {
-			return fmt.Errorf("user token not valid")
+			return fmt.Errorf("token username different that url")
 		}
 	}
-
 	return nil
 }
 
-func (u *ValidateFromToken) getKey() (*ecdsa.PublicKey, error) {
-	// Get the public key to verify jwt token
-	keyData, err := ioutil.ReadFile(u.pubkey)
+// Function for reading the ega key in []byte
+func (u *ValidateFromToken) getKey() ([]byte, error) {
+	keyData, err := ioutil.ReadFile(u.keypath + u.egakey + ".pub")
 	if err != nil {
 		return nil, fmt.Errorf("token file error")
 	}
-	key, err := jwt.ParseECPublicKeyFromPEM(keyData)
-	if err != nil {
-		return nil, fmt.Errorf("jwt key parsing error")
+	return keyData, nil
+}
+
+// Function for fetching the elixir key from the JWK and transform it to []byte
+func (u *ValidateFromToken) getKeyEl() (string, []byte, error) {
+	re := regexp.MustCompile("/([^/]+)/")
+	if re.FindStringSubmatch(u.elkeyurl) == nil {
+		return "", nil, fmt.Errorf("not valid link")
 	}
-	return key, nil
+	key := re.FindStringSubmatch(u.elkeyurl)[1]
+
+	set, err := jwk.Fetch(u.elkeyurl)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to parse JWK")
+	}
+	keyEl, err := set.Keys[0].Materialize()
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to generate public key")
+	}
+
+	pkeyBytes, err := x509.MarshalPKIXPublicKey(keyEl)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to marshal public key")
+	}
+	keyData := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "RSA PUBLIC KEY",
+			Bytes: pkeyBytes,
+		},
+	)
+	return key, keyData, nil
 }

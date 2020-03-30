@@ -28,4 +28,8 @@ server:
   cert: "./dev_utils/certs/proxy.crt"
   key: "./dev_utils/certs/proxy.key"
   users: "./dev_utils/users.csv"
-  pubkey: "./dev_utils/pubkey.pub"
+  keypath: "./dev_utils/keys/"
+  egakey: "login.ega.nbis.se"
+  elkeyurl: "https://login.elixir-czech.org/oidc/jwk"
+
+
