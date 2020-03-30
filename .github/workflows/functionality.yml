@@ -1,0 +1,42 @@
+name: Functionality test
+on: [push, pull_request]
+jobs:
+
+  test:
+    name: s3cmd
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1.1.2
+        with:
+          go-version: '1.13'
+
+      - name: Check out source code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.6'
+
+      - name: install s3cmd
+        run: pip3 install s3cmd
+
+      - name: Deploy containers
+        run: cd dev_utils && docker-compose up -d
+
+      - name: Wait for containers to start
+        run: |
+          RETRY_TIMES=0
+          for p in mq s3
+          do
+          until docker ps -f name=$p --format {{.Status}} | grep "(healthy)"
+          do echo "waiting for $p to become ready"
+          RETRY_TIMES=$((RETRY_TIMES+1));
+          if [ $RETRY_TIMES -eq 30 ]; then exit 1; fi
+          sleep 10;
+          done
+          done
+
+      - name: Upload file
+        run: cd dev_utils && s3cmd -vc proxyS3 put README.md s3://elexirid/file
