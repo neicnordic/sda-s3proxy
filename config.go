@@ -103,6 +103,7 @@ func (c *Config) readConfig() {
 	b.vhost = viper.GetString("broker.vhost")
 	b.exchange = viper.GetString("broker.exchange")
 	b.routingKey = viper.GetString("broker.routingKey")
+	b.serverName = viper.GetString("broker.serverName")
 
 	if viper.IsSet("broker.ssl") {
 		b.ssl = viper.GetBool("broker.ssl")
