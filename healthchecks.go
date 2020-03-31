@@ -50,7 +50,8 @@ func (h *HealthCheck) RunHealthChecks() {
 }
 
 func (h *HealthCheck) httpsGetCheck(url string, timeout time.Duration) healthcheck.Check {
-	cfg := h.tlsConfig
+	cfg := &tls.Config{}
+	cfg.RootCAs = h.tlsConfig.RootCAs
 	tr := &http.Transport{TLSClientConfig: cfg}
 	client := http.Client{
 		Transport: tr,

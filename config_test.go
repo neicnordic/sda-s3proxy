@@ -65,13 +65,25 @@ func TestInitialization_verifyPeerRequiresCerts(t *testing.T) {
 	assert.NotPanics(t, func() { NewConfig() })
 }
 
-// what does this test test?
-/*
-func TestInitialization_NoCaCerts(t *testing.T) {
-	fmt.Println("Test init no CaCerts")
+func TestTLSConfigBroker(t *testing.T) {
 	viper.Reset()
 	viper.Set("server.confFile", "dev_utils/config.yaml")
-	SystemCAs = x509.NewCertPool()
-	NewConfig()
+	viper.Set("broker.serverName", "RabbitMQ")
+
+	config := NewConfig()
+
+	assert.NotPanics(t, func() { TLSConfigBroker(config) })
+	tls := TLSConfigBroker(config)
+	assert.EqualValues(t, tls.ServerName, "RabbitMQ")
 }
-*/
+
+func TestTLSConfigProxy(t *testing.T) {
+	viper.Reset()
+	viper.Set("server.confFile", "dev_utils/config.yaml")
+
+	config := NewConfig()
+
+	assert.NotPanics(t, func() { TLSConfigProxy(config) })
+	tls := TLSConfigProxy(config)
+	assert.EqualValues(t, tls.ServerName, "")
+}
