@@ -200,7 +200,7 @@ func (u *ValidateFromToken) getjwtKey(jwtpubkeypath string) error {
 	}
 	re := regexp.MustCompile(`(.*)\.+`)
 	for _, file := range files {
-		keyData, err := ioutil.ReadFile(filepath.Join(jwtpubkeypath, filepath.Clean(file.Name())))
+		keyData, err := ioutil.ReadFile(filepath.Join(filepath.Clean(jwtpubkeypath), file.Name()))
 		if err != nil {
 			return fmt.Errorf("token file error")
 		}
