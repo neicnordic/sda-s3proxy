@@ -194,15 +194,13 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 
 // Function for reading the ega key in []byte
 func (u *ValidateFromToken) getjwtKey(jwtpubkeypath string) error {
-	//filename := "login.ega.nbis.se.pub"
 	files, err := ioutil.ReadDir(jwtpubkeypath)
 	if err != nil {
 		return fmt.Errorf("failed to get public key files")
 	}
 	re := regexp.MustCompile(`(.*)\.+`)
 	for _, file := range files {
-		filePath := filepath.Join(jwtpubkeypath, filepath.Clean(file.Name()))
-		keyData, err := ioutil.ReadFile(filePath)
+		keyData, err := ioutil.ReadFile(filepath.Join(jwtpubkeypath, filepath.Clean(file.Name())))
 		if err != nil {
 			return fmt.Errorf("token file error")
 		}
