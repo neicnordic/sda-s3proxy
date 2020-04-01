@@ -14,11 +14,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/spf13/viper"
-
 	"github.com/minio/minio-go/v6/pkg/s3signer"
-
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 // Proxy represents the toplevel object in this application

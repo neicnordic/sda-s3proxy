@@ -45,12 +45,11 @@ type BrokerConfig struct {
 
 // ServerConfig stores general server information
 type ServerConfig struct {
-	cert     string
-	key      string
-	users    string
-	keypath  string
-	egakey   string
-	elkeyurl string
+	cert          string
+	key           string
+	users         string
+	jwtpubkeypath string
+	jwtpubkeyurl  string
 }
 
 // Config is a parent object for all the different configuration parts
@@ -127,8 +126,7 @@ func (c *Config) readConfig() {
 	// Setup server
 	s := ServerConfig{}
 
-	if !(viper.IsSet("server.users") || (viper.IsSet("server.keypath") && viper.IsSet("server.egakey") &&
-		viper.IsSet("server.elkeyurl"))) {
+	if !(viper.IsSet("server.users") || viper.IsSet("server.jwtpubkeypath") || viper.IsSet("server.jwtpubkeyurl")) {
 		panic(fmt.Errorf("either server.users or server.pubkey should be present to start the service"))
 	}
 
@@ -138,14 +136,12 @@ func (c *Config) readConfig() {
 	}
 
 	// Token authentication
-	if viper.IsSet("server.keypath") {
-		s.keypath = viper.GetString("server.keypath")
+	if viper.IsSet("server.jwtpubkeypath") {
+		s.jwtpubkeypath = viper.GetString("server.jwtpubkeypath")
 	}
-	if viper.IsSet("server.egakey") {
-		s.egakey = viper.GetString("server.egakey")
-	}
-	if viper.IsSet("server.elkeyurl") {
-		s.elkeyurl = viper.GetString("server.elkeyurl")
+
+	if viper.IsSet("server.jwtpubkeyurl") {
+		s.jwtpubkeyurl = viper.GetString("server.jwtpubkeyurl")
 	}
 
 	if viper.IsSet("server.cert") {

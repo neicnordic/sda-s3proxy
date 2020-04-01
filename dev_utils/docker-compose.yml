@@ -67,9 +67,8 @@ services:
       - SERVER_CERT=/certs/proxy.crt
       - SERVER_KEY=/certs/proxy.key
       - SERVER_USERS=/users.csv
-      - SERVER_KEYPATH=/keys/
-      - SERVER_EGAKEY=login.ega.nbis.se
-      - SERVER_ELKEYURL=https://login.elixir-czech.org/oidc/jwk
+      - SERVER_JWTPUBKEYPATH=/keys/
+      - SERVER_JWTPUBEYURL=https://login.elixir-czech.org/oidc/jwk
     volumes:
       - ./certs/ca.crt:/certs/ca.crt
       - ./certs/client.crt:/certs/client.crt

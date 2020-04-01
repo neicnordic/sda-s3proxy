@@ -3,9 +3,9 @@ package main
 import (
 	"bufio"
 	"crypto/x509"
-	"encoding/pem"
-
 	"encoding/csv"
+	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -55,16 +55,13 @@ func NewValidateFromFile(filename string) *ValidateFromFile {
 // ValidateFromToken is an Authenticator that reads the public key from
 // supplied file
 type ValidateFromToken struct {
-	keypath  string
-	pubkeys  map[string][]byte
-	egakey   string
-	elkeyurl string
+	pubkeys map[string][]byte
 }
 
 // NewValidateFromToken returns a new ValidateFromToken, reading the key from
 // the supplied file.
-func NewValidateFromToken(keypath string, pubkeys map[string][]byte, egakey string, elkeyurl string) *ValidateFromToken {
-	return &ValidateFromToken{keypath, pubkeys, egakey, elkeyurl}
+func NewValidateFromToken(pubkeys map[string][]byte) *ValidateFromToken {
+	return &ValidateFromToken{pubkeys}
 }
 
 // Authenticate checks whether the http.Request is signed by any of the users
@@ -160,7 +157,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 			strIss := fmt.Sprintf("%v", claims["iss"])
 			key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[strIss])
 			if err != nil {
-				return fmt.Errorf("failed to parse public key ega")
+				return fmt.Errorf("failed to parse public key")
 			}
 			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
 			if err != nil {
@@ -174,7 +171,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 			re := regexp.MustCompile(`//([^/]*)/`)
 			key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
 			if err != nil {
-				return fmt.Errorf("failed to parse public key elixir")
+				return fmt.Errorf("failed to parse public key")
 			}
 			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
 			if err != nil {
@@ -195,40 +192,65 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 }
 
 // Function for reading the ega key in []byte
-func (u *ValidateFromToken) getKey() ([]byte, error) {
-	keyData, err := ioutil.ReadFile(u.keypath + u.egakey + ".pub")
+func (u *ValidateFromToken) getjwtKey(jwtpubkeypath string) error {
+	//filename := "login.ega.nbis.se.pub"
+	files, err := ioutil.ReadDir(jwtpubkeypath)
 	if err != nil {
-		return nil, fmt.Errorf("token file error")
+		return fmt.Errorf("failed to get public key files")
 	}
-	return keyData, nil
+	re := regexp.MustCompile(`(.*)\.+`)
+	for _, file := range files {
+		keyData, err := ioutil.ReadFile(jwtpubkeypath + file.Name())
+		if err != nil {
+			return fmt.Errorf("token file error")
+		}
+		mapkey := re.FindStringSubmatch(file.Name())[1]
+		u.pubkeys[mapkey] = keyData
+
+	}
+	return nil
 }
 
 // Function for fetching the elixir key from the JWK and transform it to []byte
-func (u *ValidateFromToken) getKeyEl() (string, []byte, error) {
+func (u *ValidateFromToken) getjwtpubkey(jwtpubkeyurl string) error {
 	re := regexp.MustCompile("/([^/]+)/")
-	if re.FindStringSubmatch(u.elkeyurl) == nil {
-		return "", nil, fmt.Errorf("not valid link")
+	if re.FindStringSubmatch(jwtpubkeyurl) == nil {
+		return fmt.Errorf("not valid link")
 	}
-	key := re.FindStringSubmatch(u.elkeyurl)[1]
-
-	set, err := jwk.Fetch(u.elkeyurl)
+	key := re.FindStringSubmatch(jwtpubkeyurl)[1]
+	set, err := jwk.Fetch(jwtpubkeyurl)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to parse JWK")
+		return fmt.Errorf("failed to parse JWK")
 	}
 	keyEl, err := set.Keys[0].Materialize()
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to generate public key")
+		return fmt.Errorf("failed to generate public key")
 	}
-
 	pkeyBytes, err := x509.MarshalPKIXPublicKey(keyEl)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to marshal public key")
+		return fmt.Errorf("failed to marshal public key")
+	}
+
+	r, err := http.Get(jwtpubkeyurl)
+	if err != nil {
+		return fmt.Errorf("failed to get JWK")
+	}
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return fmt.Errorf("failed to parse response")
+	}
+	defer r.Body.Close()
+	var keytype map[string][]map[string]string
+	err = json.Unmarshal(b, &keytype)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal response")
 	}
 	keyData := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "RSA PUBLIC KEY",
+			Type:  keytype["keys"][0]["kty"] + " PUBLIC KEY",
 			Bytes: pkeyBytes,
 		},
 	)
-	return key, keyData, nil
+	u.pubkeys[key] = keyData
+	return nil
 }

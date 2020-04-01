@@ -59,6 +59,7 @@ func TestInitialization_verifyPeerRequiresCerts(t *testing.T) {
 		viper.Set(s, "dummy-value")
 	}
 	viper.Set("broker.verifyPeer", "true")
+	viper.Set("server.jwtpubkeypath", "dummy-value")
 	assert.Panics(t, func() { NewConfig() })
 
 	viper.Set("broker.clientCert", "dummy-value")
