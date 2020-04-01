@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/dgrijalva/jwt-go"
@@ -200,7 +201,8 @@ func (u *ValidateFromToken) getjwtKey(jwtpubkeypath string) error {
 	}
 	re := regexp.MustCompile(`(.*)\.+`)
 	for _, file := range files {
-		keyData, err := ioutil.ReadFile(jwtpubkeypath + file.Name())
+		filePath := filepath.Join(jwtpubkeypath, filepath.Clean(file.Name()))
+		keyData, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			return fmt.Errorf("token file error")
 		}
