@@ -67,6 +67,8 @@ services:
       - SERVER_CERT=/certs/proxy.crt
       - SERVER_KEY=/certs/proxy.key
       - SERVER_USERS=/users.csv
+      - SERVER_JWTPUBKEYPATH=/keys/
+      - SERVER_JWTPUBEYURL=https://login.elixir-czech.org/oidc/jwk
     volumes:
       - ./certs/ca.crt:/certs/ca.crt
       - ./certs/client.crt:/certs/client.crt
@@ -74,6 +76,7 @@ services:
       - ./certs/proxy.crt:/certs/proxy.crt
       - ./certs/proxy.key:/certs/proxy.key
       - ./users.csv:/users.csv
+      - ./keys/:/keys/
     ports:
       - "8000:8000"
       - "8001:8001"
