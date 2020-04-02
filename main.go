@@ -19,14 +19,12 @@ func main() {
 	auth.pubkeys = make(map[string][]byte)
 	// Load keys for JWT verification
 	if config.Server.jwtpubkeyurl != "" {
-		err := auth.getjwtpubkey(config.Server.jwtpubkeyurl)
-		if err != nil {
+		if err := auth.getjwtpubkey(config.Server.jwtpubkeyurl); err != nil {
 			panic(fmt.Errorf("either server.users or server.pubkey should be present to start the service"))
 		}
 	}
 	if config.Server.jwtpubkeypath != "" {
-		err := auth.getjwtKey(config.Server.jwtpubkeypath)
-		if err != nil {
+		if err := auth.getjwtkey(config.Server.jwtpubkeypath); err != nil {
 			panic(fmt.Errorf("either server.users or server.pubkey should be present to start the service"))
 		}
 	}
