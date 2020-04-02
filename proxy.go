@@ -16,11 +16,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/spf13/viper"
-
 	"github.com/minio/minio-go/v6/pkg/s3signer"
-
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 // Proxy represents the toplevel object in this application
@@ -189,6 +187,7 @@ func (p *Proxy) prependBucketToHostPath(r *http.Request) {
 // Used for for creating a signature for with the default
 // credentials of the s3 service and the user's signature (authentication)
 func (p *Proxy) resignHeader(r *http.Request, accessKey string, secretKey string, backendURL string) *http.Request {
+	r.Header.Del("X-Amz-Security-Token")
 	if strings.Contains(backendURL, "//") {
 		host := strings.SplitN(backendURL, "//", 2)
 		r.Host = host[1]
