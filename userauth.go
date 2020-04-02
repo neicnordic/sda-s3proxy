@@ -193,7 +193,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 }
 
 // Function for reading the ega key in []byte
-func (u *ValidateFromToken) getjwtKey(jwtpubkeypath string) error {
+func (u *ValidateFromToken) getjwtkey(jwtpubkeypath string) error {
 	files, err := ioutil.ReadDir(jwtpubkeypath)
 	if err != nil {
 		return fmt.Errorf("failed to get public key files")
