@@ -1,4 +1,5 @@
 // +build live
+// This test assumes that the dev_utils docker-compose services are running
 
 package main
 
