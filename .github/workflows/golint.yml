@@ -56,3 +56,4 @@ jobs:
       with:
         run: sec
         send_comment: false
+        flags: "-exclude=G107"
