@@ -17,7 +17,6 @@ var (
 	requiredConfVars = []string{
 		"aws.url", "aws.accessKey", "aws.secretKey", "aws.bucket",
 		"broker.host", "broker.port", "broker.user", "broker.password", "broker.vhost", "broker.exchange", "broker.routingKey",
-		"server.users",
 	}
 )
 
@@ -51,9 +50,11 @@ type BrokerConfig struct {
 
 // ServerConfig stores general server information
 type ServerConfig struct {
-	cert  string
-	key   string
-	users string
+	cert          string
+	key           string
+	users         string
+	jwtpubkeypath string
+	jwtpubkeyurl  string
 }
 
 // Config is a parent object for all the different configuration parts
@@ -131,7 +132,23 @@ func (c *Config) readConfig() {
 	// Setup server
 	s := ServerConfig{}
 
-	s.users = viper.GetString("server.users")
+	if !(viper.IsSet("server.users") || viper.IsSet("server.jwtpubkeypath") || viper.IsSet("server.jwtpubkeyurl")) {
+		panic(fmt.Errorf("either server.users or server.pubkey should be present to start the service"))
+	}
+
+	// User file authentication
+	if viper.IsSet("server.users") {
+		s.users = viper.GetString("server.users")
+	}
+
+	// Token authentication
+	if viper.IsSet("server.jwtpubkeypath") {
+		s.jwtpubkeypath = viper.GetString("server.jwtpubkeypath")
+	}
+
+	if viper.IsSet("server.jwtpubkeyurl") {
+		s.jwtpubkeyurl = viper.GetString("server.jwtpubkeyurl")
+	}
 
 	if viper.IsSet("server.cert") {
 		s.cert = viper.GetString("server.cert")

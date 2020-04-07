@@ -39,4 +39,4 @@ jobs:
           done
 
       - name: Upload file
-        run: cd dev_utils && s3cmd -vc proxyS3 put README.md s3://elexirid/file
+        run: cd dev_utils && s3cmd -vc proxyS3 put README.md s3://dummy/file

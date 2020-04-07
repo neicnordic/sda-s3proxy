@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -13,8 +14,22 @@ func main() {
 	messenger := NewAMQPMessenger(config.Broker, tlsBroker)
 	log.Print("Messenger acquired ", messenger)
 
-	auth := NewValidateFromFile(config.Server.users)
+	var pubkeys map[string][]byte
+	auth := NewValidateFromToken(pubkeys)
+	auth.pubkeys = make(map[string][]byte)
+	// Load keys for JWT verification
+	if config.Server.jwtpubkeyurl != "" {
+		if err := auth.getjwtpubkey(config.Server.jwtpubkeyurl); err != nil {
+			panic(fmt.Errorf("either server.users or server.pubkey should be present to start the service"))
+		}
+	}
+	if config.Server.jwtpubkeypath != "" {
+		if err := auth.getjwtkey(config.Server.jwtpubkeypath); err != nil {
+			panic(fmt.Errorf("either server.users or server.pubkey should be present to start the service"))
+		}
+	}
 	proxy := NewProxy(config.S3, auth, messenger, tlsProxy)
+
 	log.Print("Got the Proxy ", proxy)
 
 	http.Handle("/", proxy)
