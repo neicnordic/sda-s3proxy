@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -244,7 +245,7 @@ func (p *Proxy) detectRequestType(r *http.Request) S3RequestType {
 // figure out the correct message to send from it.
 func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 	// Extract username for request's url path
-	re := regexp.MustCompile("/([^/]+)/")
+	re := regexp.MustCompile("/[^/]+/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 
 	event := Event{}
@@ -269,7 +270,7 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 	event.Username = username
 	checksum.Type = "etag"
 	event.Checksum = checksum
-
+	log.Info("%v uploaded %v on %v", event.Username, event.Filepath, time.Now())
 	return event, nil
 }
 
