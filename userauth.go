@@ -194,19 +194,25 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 
 // Function for reading the ega key in []byte
 func (u *ValidateFromToken) getjwtkey(jwtpubkeypath string) error {
-	files, err := ioutil.ReadDir(jwtpubkeypath)
+	re := regexp.MustCompile(`(.*)\.+`)
+	err := filepath.Walk(jwtpubkeypath,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if string(info.Mode().String()[0]) == "-" {
+				log.Debug("reading file: ", filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
+				keyData, err := ioutil.ReadFile(filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
+				if err != nil {
+					return fmt.Errorf("token file error: %s", err)
+				}
+				mapkey := re.FindStringSubmatch(info.Name())[1]
+				u.pubkeys[mapkey] = keyData
+			}
+			return nil
+		})
 	if err != nil {
 		return fmt.Errorf("failed to get public key files")
-	}
-	re := regexp.MustCompile(`(.*)\.+`)
-	for _, file := range files {
-		keyData, err := ioutil.ReadFile(filepath.Join(filepath.Clean(jwtpubkeypath), file.Name()))
-		if err != nil {
-			return fmt.Errorf("token file error")
-		}
-		mapkey := re.FindStringSubmatch(file.Name())[1]
-		u.pubkeys[mapkey] = keyData
-
 	}
 	return nil
 }
