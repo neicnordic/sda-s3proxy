@@ -200,7 +200,7 @@ func (u *ValidateFromToken) getjwtkey(jwtpubkeypath string) error {
 			if err != nil {
 				return err
 			}
-			if string(info.Mode().String()[0]) == "-" {
+			if info.Mode().IsRegular() {
 				log.Debug("reading file: ", filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
 				keyData, err := ioutil.ReadFile(filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
 				if err != nil {
