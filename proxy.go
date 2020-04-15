@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -269,6 +270,7 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 	event.Username = username
 	checksum.Type = "etag"
 	event.Checksum = checksum
+	log.Info("user ", event.Username, " uploaded file ", event.Filepath, " with checksum ", event.Checksum.Value, " at ", time.Now())
 	return event, nil
 }
 
