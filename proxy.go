@@ -244,7 +244,7 @@ func (p *Proxy) detectRequestType(r *http.Request) S3RequestType {
 // figure out the correct message to send from it.
 func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 	// Extract username for request's url path
-	re := regexp.MustCompile("/([^/]+)/")
+	re := regexp.MustCompile("/[^/]+/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 
 	event := Event{}
@@ -269,7 +269,6 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 	event.Username = username
 	checksum.Type = "etag"
 	event.Checksum = checksum
-
 	return event, nil
 }
 

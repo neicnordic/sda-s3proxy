@@ -287,7 +287,7 @@ func TestServeHTTP_allowed(t *testing.T) {
 func TestMessageFormatting(t *testing.T) {
 	f := startFakeServer("9023")
 	// Set up basic request for multipart upload
-	r, _ := http.NewRequest("POST", "/user/new_file.txt", nil)
+	r, _ := http.NewRequest("POST", "/buckbuck/user/new_file.txt", nil)
 	r.Host = "localhost"
 	r.Header.Set("content-length", "1234")
 	r.Header.Set("x-amz-content-sha256", "checksum")
@@ -309,7 +309,7 @@ func TestMessageFormatting(t *testing.T) {
 
 	assert.Equal(t, "multipart-upload", msg.Operation)
 	assert.Equal(t, int64(1234), msg.Filesize)
-	assert.Equal(t, "/user/new_file.txt", msg.Filepath)
+	assert.Equal(t, "/buckbuck/user/new_file.txt", msg.Filepath)
 	assert.Equal(t, "user", msg.Username)
 	assert.Equal(t, "etag", msg.Checksum.Type)
 	assert.Equal(t, "0a44282bd39178db9680f24813c41aec-1", msg.Checksum.Value)
