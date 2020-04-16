@@ -155,10 +155,11 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 		return fmt.Errorf("user token not found")
 	}
 	token, _ := jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return nil, nil })
-	if token.Header["alg"] == "ES256" {
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			strIss := fmt.Sprintf("%v", claims["iss"])
-			key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[strIss])
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		strIss := fmt.Sprintf("%v", claims["iss"])
+		re := regexp.MustCompile(`//([^/]*)`)
+		if token.Header["alg"] == "ES256" {
+			key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
 			if err != nil {
 				return fmt.Errorf("failed to parse public key")
 			}
@@ -166,11 +167,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 			if err != nil {
 				return fmt.Errorf("user token not valid")
 			}
-		}
-	} else if token.Header["alg"] == "RS256" {
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			strIss := fmt.Sprintf("%v", claims["iss"])
-			re := regexp.MustCompile(`//([^/]*)/`)
+		} else if token.Header["alg"] == "RS256" {
 			key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
 			if err != nil {
 				return fmt.Errorf("failed to parse public key")
