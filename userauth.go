@@ -154,30 +154,25 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 	if tokenStr == "" {
 		return fmt.Errorf("user token not found")
 	}
-	token, _ := jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return nil, nil })
-	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		strIss := fmt.Sprintf("%v", claims["iss"])
-		re := regexp.MustCompile(`//([^/]*)`)
-		if token.Header["alg"] == "ES256" {
-			key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
-			if err != nil {
-				return fmt.Errorf("failed to parse public key")
-			}
-			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
-			if err != nil {
-				return fmt.Errorf("user token not valid")
-			}
-		} else if token.Header["alg"] == "RS256" {
-			key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
-			if err != nil {
-				return fmt.Errorf("failed to parse public key")
-			}
-			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
-			if err != nil {
-				return fmt.Errorf("user token not valid")
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			strIss := fmt.Sprintf("%v", claims["iss"])
+			re := regexp.MustCompile(`//([^/]*)`)
+			strIss = re.FindStringSubmatch(strIss)[1]
+			key := u.pubkeys[strIss]
+
+			if token.Header["alg"] == "ES256" {
+				return jwt.ParseECPublicKeyFromPEM(key)
+			} else if token.Header["alg"] == "RS256" {
+				return jwt.ParseRSAPublicKeyFromPEM(key)
 			}
 		}
+		return nil, fmt.Errorf("Can't find claims for iss")
+	})
+	if err != nil {
+		return fmt.Errorf("user token not valid")
 	}
+
 	// Check whether token username and filepath match
 	re := regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
