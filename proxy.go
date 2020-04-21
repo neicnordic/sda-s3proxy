@@ -189,6 +189,14 @@ func (p *Proxy) prependBucketToHostPath(r *http.Request) {
 // credentials of the s3 service and the user's signature (authentication)
 func (p *Proxy) resignHeader(r *http.Request, accessKey string, secretKey string, backendURL string) *http.Request {
 	r.Header.Del("X-Amz-Security-Token")
+	r.Header.Del("X-Forwarded-Port")
+	r.Header.Del("X-Forwarded-Proto")
+	r.Header.Del("X-Forwarded-Host")
+	r.Header.Del("X-Forwarded-For")
+	r.Header.Del("X-Original-Uri")
+	r.Header.Del("X-Real-Ip")
+	r.Header.Del("X-Request-Id")
+	r.Header.Del("X-Scheme")
 	if strings.Contains(backendURL, "//") {
 		host := strings.SplitN(backendURL, "//", 2)
 		r.Host = host[1]
