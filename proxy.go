@@ -277,7 +277,7 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 // RequestInfo is a function that makes a request to the S3 and collects
 // the etag and size information for the uploaded document
 func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
-	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket"), "", 1)
+	filePath := strings.Replace(fullPath, "/"+viper.GetString("aws.bucket")+"/", "", 1)
 	s, err := p.newSession()
 	if err != nil {
 		return "", 0, err
