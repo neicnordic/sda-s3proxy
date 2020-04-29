@@ -4,9 +4,9 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
@@ -47,24 +47,24 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
 	var channel *amqp.Channel
 	var err error
 
-	log.Printf("Connecting to broker with <%s>", brokerURI)
+	log.Debugf("connecting to broker with <%s>", brokerURI)
 	if c.ssl {
 		connection, err = amqp.DialTLS(brokerURI, tlsConfig)
 	} else {
 		connection, err = amqp.Dial(brokerURI)
 	}
 	if err != nil {
-		panic(fmt.Errorf("BrokerErrMsg 1: %s", err))
+		log.Panicf("brokerErrMsg 1: %s", err)
 	}
 
 	channel, err = connection.Channel()
 	if err != nil {
-		panic(fmt.Errorf("BrokerErrMsg 2: %s", err))
+		log.Panicf("brokerErrMsg 2: %s", err)
 	}
 
-	log.Printf("enabling publishing confirms.")
+	log.Debug("enabling publishing confirms.")
 	if err = channel.Confirm(false); err != nil {
-		log.Fatalf("Channel could not be put into confirm mode: %s", err)
+		log.Fatalf("channel could not be put into confirm mode: %s", err)
 	}
 
 	if err = channel.ExchangeDeclare(
@@ -76,7 +76,7 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
 		false,      // noWait
 		nil,        // arguments
 	); err != nil {
-		log.Fatalf("Exchange Declare: %s", err)
+		log.Fatalf("exchange declare: %s", err)
 	}
 
 	return &AMQPMessenger{connection, channel, c.exchange, c.routingKey}

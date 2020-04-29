@@ -129,7 +129,7 @@ func TestUserTokenAuthenticator_ValidateSignature(t *testing.T) {
 	// Set up request defaults
 	r, _ := http.NewRequest("", "/", nil)
 	r.Host = "localhost"
-	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2R1bW15LmVnYS5uYmlzLnNlIiwic3ViIjoiZHVtbXkiLCJleHAiOjE1ODc2MjcwOTZ9.ovoOUMhQQ_omvTOQJowuKFEcCcy16hyfWvEunsRcVtAHwt5w95QwW6TRgXYVJ-u7zrz9CIzGbUBLwNI8nze9GA")
+	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2R1bW15LmVnYS5uYmlzLnNlIiwic3ViIjoiZHVtbXkiLCJleHAiOjE2MTk2NzY5ODB9.CplalxMMMF_96jFpVM61TrhjCKiAK6Y2jdhe3THJJKDRk4y-WnlQmidyFeec9n__OQH_rWtlE3G6sJb1GSS9Wg")
 
 	// Test that a user can access their own bucket
 	r.URL.Path = "/dummy/"
@@ -143,7 +143,7 @@ func TestUserTokenAuthenticator_ValidateSignature(t *testing.T) {
 
 	r, _ = http.NewRequest("", "/", nil)
 	r.Host = "localhost"
-	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2R1bW15LmVnYS5uYmlzLnNlIiwic3ViIjoiZHVtbXkiLCJleHAiOjE1ODc2MjcwOTZ9.ovoOUMhQQ_omvTOQJowuKFEcCcy16hyfWvEunsRcVtAHwt5w95QwW6TRgXYVJ-u7zrz9CIzGbUBLwNI8nze9GA")
+	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2R1bW15LmVnYS5uYmlzLnNlIiwic3ViIjoiZHVtbXkiLCJleHAiOjE2MTk2NzY5ODB9.CplalxMMMF_96jFpVM61TrhjCKiAK6Y2jdhe3THJJKDRk4y-WnlQmidyFeec9n__OQH_rWtlE3G6sJb1GSS9Wg")
 	r.URL.Path = "/username/"
 	assert.Error(t, a.Authenticate(r))
 

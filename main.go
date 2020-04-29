@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -12,7 +12,7 @@ func main() {
 	tlsBroker := TLSConfigBroker(config)
 	tlsProxy := TLSConfigProxy(config)
 	messenger := NewAMQPMessenger(config.Broker, tlsBroker)
-	log.Print("Messenger acquired ", messenger)
+	log.Debug("messenger acquired ", messenger)
 
 	var pubkeys map[string][]byte
 	auth := NewValidateFromToken(pubkeys)
@@ -20,17 +20,17 @@ func main() {
 	// Load keys for JWT verification
 	if config.Server.jwtpubkeyurl != "" {
 		if err := auth.getjwtpubkey(config.Server.jwtpubkeyurl); err != nil {
-			panic(fmt.Errorf("either server.users or server.pubkey should be present to start the service"))
+			log.Panic("either server.users or server.jwtpubkeyurl should be present to start the service")
 		}
 	}
 	if config.Server.jwtpubkeypath != "" {
 		if err := auth.getjwtkey(config.Server.jwtpubkeypath); err != nil {
-			panic(fmt.Errorf("either server.users or server.pubkey should be present to start the service"))
+			log.Panic("either server.users or server.jwtpubkeypath should be present to start the service")
 		}
 	}
 	proxy := NewProxy(config.S3, auth, messenger, tlsProxy)
 
-	log.Print("Got the Proxy ", proxy)
+	log.Debug("got the proxy ", proxy)
 
 	http.Handle("/", proxy)
 

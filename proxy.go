@@ -56,62 +56,65 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch t := p.detectRequestType(r); t {
 	case MakeBucket, RemoveBucket, Delete, Policy, Get:
 		// Not allowed
-		log.Debug("Not allowed 1")
+		log.Debug("not allowed known")
 		p.notAllowedResponse(w, r)
 	case Put, List, Other, AbortMultipart:
 		// Allowed
 		p.allowedResponse(w, r)
 	default:
-		log.Debug("Not allowed 2")
+		log.Debug("not allowed unknown")
 		p.notAllowedResponse(w, r)
 	}
 }
 
 func (p *Proxy) internalServerError(w http.ResponseWriter, r *http.Request) {
-	log.Debug("Internal Server Error")
+	log.Debug("internal server error")
 	w.WriteHeader(500)
 }
 
 func (p *Proxy) notAllowedResponse(w http.ResponseWriter, r *http.Request) {
-	log.Debug("Not Allowed Response")
+	log.Debug("not allowed response")
 	w.WriteHeader(403)
 }
 
 func (p *Proxy) notAuthorized(w http.ResponseWriter, r *http.Request) {
-	log.Debug("Not Authorized")
+	log.Debug("not authorized")
 	w.WriteHeader(401) // Actually correct!
 }
 
 func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	if err := p.auth.Authenticate(r); err != nil {
-		log.Debug("Not authenticated !!!!!! !!  !!!")
+		log.Debug("not authenticated")
 		log.Debug(err)
 		p.notAuthorized(w, r)
 		return
 	}
 
-	log.Debug("Prepend")
+	log.Debug("prepend")
 	p.prependBucketToHostPath(r)
 
-	log.Debug("Forward to Backend")
+	log.Debug("forward to backend")
 	s3response, err := p.forwardToBackend(r)
 
 	if err != nil {
-		log.Debug("Internal server error")
-		fmt.Println(err)
+		log.Debug("internal server error")
+		log.Debug(err)
 		p.internalServerError(w, r)
 		return
 	}
 
 	// Send message to upstream
 	if p.uploadFinishedSuccessfully(r, s3response) {
+		log.Debug("create message")
 		message, _ := p.CreateMessageFromRequest(r)
 		if err = p.messenger.SendMessage(message); err != nil {
-			log.Printf("error when sending message: %v", err)
+			log.Debug("error when sending message")
+			log.Debug(err)
 		}
 	}
 
 	// Redirect answer
+	log.Debug("redirect answer")
 	for header, values := range s3response.Header {
 		for _, value := range values {
 			w.Header().Add(header, value)
@@ -144,7 +147,8 @@ func (p *Proxy) forwardToBackend(r *http.Request) (*http.Response, error) {
 	// Redirect request
 	nr, err := http.NewRequest(r.Method, p.s3.url+r.URL.String(), r.Body)
 	if err != nil {
-		fmt.Println(err)
+		log.Debug("error when redirecting the request")
+		log.Debug(err)
 		return nil, err
 	}
 	nr.Header = r.Header
@@ -161,8 +165,8 @@ func (p *Proxy) prependBucketToHostPath(r *http.Request) {
 	re := regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 
-	log.Debug("Incomming Path: ", r.URL.Path)
-	log.Debug("Incomming Raw: ", r.URL.RawQuery)
+	log.Debug("incoming path: ", r.URL.Path)
+	log.Debug("incoming raw: ", r.URL.RawQuery)
 
 	// Restructure request to query the users folder instead of the general bucket
 	if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?delimiter") {
@@ -173,14 +177,15 @@ func (p *Proxy) prependBucketToHostPath(r *http.Request) {
 		} else {
 			r.URL.RawQuery = r.URL.RawQuery + "&prefix=" + username + "%2F"
 		}
-		log.Debug("New RawQuery: ", r.URL.RawQuery)
+		log.Debug("new Raw Query: ", r.URL.RawQuery)
 	} else if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?location") {
 		r.URL.Path = "/" + bucket + "/"
-		log.Debug("New Path: ", r.URL.Path)
+		log.Debug("new Path: ", r.URL.Path)
 	} else if r.Method == http.MethodPost || r.Method == http.MethodPut {
 		r.URL.Path = "/" + bucket + r.URL.Path
-		log.Debug("New Path: ", r.URL.Path)
+		log.Debug("new Path: ", r.URL.Path)
 	}
+	log.Info("user ", username, " request type ", r.Method, " path ", r.URL.Path, " at ", time.Now())
 }
 
 // Function for signing the headers of the s3 requests
@@ -261,7 +266,7 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 
 	checksum.Value, event.Filesize, err = p.requestInfo(r.URL.Path)
 	if err != nil {
-		log.Fatalf("Could not get checksum information: %s", err)
+		log.Fatalf("could not get checksum information: %s", err)
 	}
 
 	// Case for simple upload
@@ -301,14 +306,15 @@ func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case s3.ErrCodeNoSuchBucket:
-				fmt.Println(s3.ErrCodeNoSuchBucket, aerr.Error())
+				log.Debug("bucket not found when listing objects")
+				log.Debug(s3.ErrCodeNoSuchBucket, aerr.Error())
 			default:
-				fmt.Println(aerr.Error())
+				log.Debug("caught error when listing objects")
+				log.Debug(aerr.Error())
 			}
 		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err)
+			log.Debug("error when listing objects")
+			log.Debug(err)
 		}
 		return "", 0, err
 	}
