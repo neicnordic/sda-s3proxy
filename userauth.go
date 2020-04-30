@@ -94,7 +94,8 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 			// Create signing request
 			nr, e := http.NewRequest(r.Method, r.URL.String(), r.Body)
 			if e != nil {
-				fmt.Println(e)
+				log.Debug("error creating the new request")
+				log.Debug(e)
 			}
 
 			// Add required headers
@@ -113,7 +114,7 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 			}
 		}
 	} else {
-		log.Debug("User not existing: ", curAccessKey)
+		log.Debug("user not existing: ", curAccessKey)
 		return fmt.Errorf("user not existing")
 	}
 	return nil
@@ -122,12 +123,13 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 	f, e := os.Open(u.filename)
 	if e != nil {
-		panic(fmt.Errorf("UsersFileErrMsg: %s", e))
+		log.Panicf("error opening users files: %s", e)
 	}
 
 	defer func() {
 		if err := f.Close(); err != nil {
-			log.Debug("Error on close ", err)
+			log.Debug("error on close ")
+			log.Debug(err)
 		}
 	}()
 
@@ -138,12 +140,11 @@ func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 		if e == io.EOF {
 			break
 		}
-		//log.Debug("Reading user ", record[0])
 		if record[0] == id {
 			return record[1], nil
 		}
 	}
-	return "", fmt.Errorf("can't find id")
+	return "", fmt.Errorf("cannot find id")
 }
 
 // Authenticate verifies that the token included in the http.Request
@@ -233,7 +234,7 @@ func (u *ValidateFromToken) getjwtpubkey(jwtpubkeyurl string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal public key")
 	}
-
+	log.Debug("request jwt")
 	r, err := http.Get(jwtpubkeyurl)
 	if err != nil {
 		return fmt.Errorf("failed to get JWK")

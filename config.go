@@ -3,13 +3,12 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
-	"log"
 	"path"
 	"reflect"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -118,7 +117,7 @@ func (c *Config) readConfig() {
 		b.verifyPeer = viper.GetBool("broker.verifyPeer")
 		// Since verifyPeer is specified, these are required.
 		if !(viper.IsSet("broker.clientCert") && viper.IsSet("broker.clientKey")) {
-			panic(fmt.Errorf("when broker.verifyPeer is set both broker.clientCert and broker.clientKey is needed"))
+			log.Panic("when broker.verifyPeer is set both broker.clientCert and broker.clientKey is needed")
 		}
 		b.clientCert = viper.GetString("broker.clientCert")
 		b.clientKey = viper.GetString("broker.clientKey")
@@ -133,7 +132,7 @@ func (c *Config) readConfig() {
 	s := ServerConfig{}
 
 	if !(viper.IsSet("server.users") || viper.IsSet("server.jwtpubkeypath") || viper.IsSet("server.jwtpubkeyurl")) {
-		panic(fmt.Errorf("either server.users or server.pubkey should be present to start the service"))
+		log.Panic("either server.users or server.pubkey should be present to start the service")
 	}
 
 	// User file authentication
@@ -181,11 +180,11 @@ func parseConfig() {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			for _, s := range requiredConfVars {
 				if !viper.IsSet(s) {
-					panic(fmt.Errorf("%s not set", s))
+					log.Panicf("%s not set", s)
 				}
 			}
 		} else {
-			panic(fmt.Errorf("fatal error config file: %s", err))
+			log.Panicf("fatal error config file: %s", err)
 		}
 	}
 }
@@ -194,7 +193,7 @@ func parseConfig() {
 func TLSConfigBroker(c *Config) *tls.Config {
 	cfg := new(tls.Config)
 
-	log.Printf("Setting up TLS")
+	log.Debug("setting up TLS for broker connection")
 
 	// Enforce TLS1.2 or higher
 	cfg.MinVersion = 2
@@ -202,7 +201,7 @@ func TLSConfigBroker(c *Config) *tls.Config {
 	// Read system CAs
 	var systemCAs, _ = x509.SystemCertPool()
 	if reflect.DeepEqual(systemCAs, x509.NewCertPool()) {
-		fmt.Println("creating new CApool")
+		log.Debug("creating new CApool")
 		systemCAs = x509.NewCertPool()
 	}
 	cfg.RootCAs = systemCAs
@@ -218,7 +217,7 @@ func TLSConfigBroker(c *Config) *tls.Config {
 			log.Fatalf("Failed to append %q to RootCAs: %v", cacert, e)
 		}
 		if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
-			log.Println("No certs appended, using system certs only")
+			log.Debug("no certs appended, using system certs only")
 		}
 	}
 
@@ -231,18 +230,17 @@ func TLSConfigBroker(c *Config) *tls.Config {
 		if c.Broker.clientCert != "" && c.Broker.clientKey != "" {
 			cert, e := ioutil.ReadFile(c.Broker.clientCert)
 			if e != nil {
-				log.Fatalf("Failed to append %q to RootCAs: %v", c.Broker.clientKey, e)
+				log.Fatalf("failed to append %q to RootCAs: %v", c.Broker.clientKey, e)
 			}
 			key, e := ioutil.ReadFile(c.Broker.clientKey)
 			if e != nil {
-				log.Fatalf("Failed to append %q to RootCAs: %v", c.Broker.clientKey, e)
+				log.Fatalf("failed to append %q to RootCAs: %v", c.Broker.clientKey, e)
 			}
 			if certs, e := tls.X509KeyPair(cert, key); e == nil {
 				cfg.Certificates = append(cfg.Certificates, certs)
 			}
 		} else {
-			fmt.Println("No certs")
-			log.Fatalf("brokerErrMsg: No certs")
+			log.Fatalf("broker error message: no certs")
 		}
 	}
 	return cfg
@@ -252,7 +250,7 @@ func TLSConfigBroker(c *Config) *tls.Config {
 func TLSConfigProxy(c *Config) *tls.Config {
 	cfg := new(tls.Config)
 
-	log.Printf("Setting up TLS")
+	log.Debug("setting up TLS for S3 connection")
 
 	// Enforce TLS1.2 or higher
 	cfg.MinVersion = 2
@@ -260,7 +258,7 @@ func TLSConfigProxy(c *Config) *tls.Config {
 	// Read system CAs
 	var systemCAs, _ = x509.SystemCertPool()
 	if reflect.DeepEqual(systemCAs, x509.NewCertPool()) {
-		fmt.Println("creating new CApool")
+		log.Debug("creating new CApool")
 		systemCAs = x509.NewCertPool()
 	}
 	cfg.RootCAs = systemCAs
@@ -268,10 +266,10 @@ func TLSConfigProxy(c *Config) *tls.Config {
 	if c.S3.cacert != "" {
 		cacert, e := ioutil.ReadFile(c.S3.cacert) // #nosec this file comes from our configuration
 		if e != nil {
-			log.Fatalf("Failed to append %q to RootCAs: %v", cacert, e)
+			log.Fatalf("failed to append %q to RootCAs: %v", cacert, e)
 		}
 		if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
-			log.Println("No certs appended, using system certs only")
+			log.Debug("no certs appended, using system certs only")
 		}
 	}
 
