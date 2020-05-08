@@ -32,9 +32,9 @@ func TestSendMessage(t *testing.T) {
 	event := Event{}
 	checksum := Checksum{}
 	event.Username = "Dummy"
-	checksum.Type = "etag"
+	checksum.Type = "md5"
 	checksum.Value = "123456789"
-	event.Checksum = checksum
+	event.Checksum = []interface{}{checksum}
 
 	assert.NotPanics(t, func() { messenger.SendMessage(event) })
 
