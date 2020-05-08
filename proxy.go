@@ -280,9 +280,9 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 	}
 	event.Filepath = r.URL.Path
 	event.Username = username
-	checksum.Type = "etag"
-	event.Checksum = checksum
-	log.Info("user ", event.Username, " uploaded file ", event.Filepath, " with checksum ", event.Checksum.Value, " at ", time.Now())
+	checksum.Type = "md5"
+	event.Checksum = []interface{}{checksum}
+	log.Info("user ", event.Username, " uploaded file ", event.Filepath, " with checksum ", checksum.Value, " at ", time.Now())
 	return event, nil
 }
 
