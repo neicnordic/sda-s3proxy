@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -270,14 +269,7 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 	}
 
 	// Case for simple upload
-	if r.Method == http.MethodPut {
-		event.Operation = "upload"
-		// Case for multi-part upload
-	} else if r.Method == http.MethodPost {
-		event.Operation = "multipart-upload"
-	} else {
-		return Event{}, fmt.Errorf("upload method has to be POST or PUT")
-	}
+	event.Operation = "upload"
 	event.Filepath = r.URL.Path
 	event.Username = username
 	checksum.Type = "md5"
