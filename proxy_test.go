@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -307,12 +308,15 @@ func TestMessageFormatting(t *testing.T) {
 	assert.Nil(t, err)
 	assert.IsType(t, Event{}, msg)
 
-	assert.Equal(t, "multipart-upload", msg.Operation)
 	assert.Equal(t, int64(1234), msg.Filesize)
 	assert.Equal(t, "/buckbuck/user/new_file.txt", msg.Filepath)
 	assert.Equal(t, "user", msg.Username)
-	assert.Equal(t, "etag", msg.Checksum.Type)
-	assert.Equal(t, "0a44282bd39178db9680f24813c41aec-1", msg.Checksum.Value)
+
+	c, _ := json.Marshal(msg.Checksum[0])
+	checksum := Checksum{}
+	_ = json.Unmarshal(c, &checksum)
+	assert.Equal(t, "md5", checksum.Type)
+	assert.Equal(t, "0a44282bd39178db9680f24813c41aec-1", checksum.Value)
 
 	// Test single shot upload
 	r.Method = "PUT"
@@ -320,11 +324,4 @@ func TestMessageFormatting(t *testing.T) {
 	assert.Nil(t, err)
 	assert.IsType(t, Event{}, msg)
 	assert.Equal(t, "upload", msg.Operation)
-
-	// Test GET upload
-	r.Method = "GET"
-	msg, err = proxy.CreateMessageFromRequest(r)
-	assert.NotNil(t, err)
-	assert.IsType(t, Event{}, msg)
-	assert.Equal(t, "", msg.Operation)
 }
