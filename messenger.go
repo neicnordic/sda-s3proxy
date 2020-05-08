@@ -18,11 +18,11 @@ type Checksum struct {
 
 // The Event struct
 type Event struct {
-	Operation string   `json:"operation"`
-	Username  string   `json:"user"`
-	Filepath  string   `json:"filepath"`
-	Filesize  int64    `json:"filesize"`
-	Checksum  Checksum `json:"encoded_checksum"`
+	Operation string        `json:"operation"`
+	Username  string        `json:"user"`
+	Filepath  string        `json:"filepath"`
+	Filesize  int64         `json:"filesize"`
+	Checksum  []interface{} `json:"encrypted_checksums"`
 }
 
 // Messenger is an interface for sending messages for different file events
