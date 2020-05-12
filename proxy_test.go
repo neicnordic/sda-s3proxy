@@ -315,8 +315,8 @@ func TestMessageFormatting(t *testing.T) {
 	c, _ := json.Marshal(msg.Checksum[0])
 	checksum := Checksum{}
 	_ = json.Unmarshal(c, &checksum)
-	assert.Equal(t, "md5", checksum.Type)
-	assert.Equal(t, "0a44282bd39178db9680f24813c41aec-1", checksum.Value)
+	assert.Equal(t, "sha256", checksum.Type)
+	assert.Equal(t, "5b233b981dc12e7ccf4c242b99c042b7842b73b956ad662e4fe0f8354151538b", checksum.Value)
 
 	// Test single shot upload
 	r.Method = "PUT"
