@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -272,7 +274,7 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 	event.Operation = "upload"
 	event.Filepath = r.URL.Path
 	event.Username = username
-	checksum.Type = "md5"
+	checksum.Type = "sha256"
 	event.Checksum = []interface{}{checksum}
 	log.Info("user ", event.Username, " uploaded file ", event.Filepath, " with checksum ", checksum.Value, " at ", time.Now())
 	return event, nil
@@ -310,7 +312,9 @@ func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 		}
 		return "", 0, err
 	}
-	return strings.ReplaceAll(*result.Contents[0].ETag, "\"", ""), *result.Contents[0].Size, nil
+	fmt.Println(strings.ReplaceAll(*result.Contents[0].ETag, "\"", ""))
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(strings.ReplaceAll(*result.Contents[0].ETag, "\"", "")))), *result.Contents[0].Size, nil
+
 }
 
 func (p *Proxy) newSession() (*session.Session, error) {
