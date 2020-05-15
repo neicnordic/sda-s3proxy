@@ -272,7 +272,7 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 
 	// Case for simple upload
 	event.Operation = "upload"
-	event.Filepath = r.URL.Path
+	event.Filepath = strings.Replace(r.URL.Path, "/"+p.s3.bucket+"/", "", 1)
 	event.Username = username
 	checksum.Type = "sha256"
 	event.Checksum = []interface{}{checksum}

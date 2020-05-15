@@ -309,7 +309,7 @@ func TestMessageFormatting(t *testing.T) {
 	assert.IsType(t, Event{}, msg)
 
 	assert.Equal(t, int64(1234), msg.Filesize)
-	assert.Equal(t, "/buckbuck/user/new_file.txt", msg.Filepath)
+	assert.Equal(t, "user/new_file.txt", msg.Filepath)
 	assert.Equal(t, "user", msg.Username)
 
 	c, _ := json.Marshal(msg.Checksum[0])
