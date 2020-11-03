@@ -128,6 +128,11 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalln("redirect error")
 	}
+
+	// Read any remaining data in the connection and
+	// Close so connection can be reused.
+	_, err = ioutil.ReadAll(s3response.Body)
+	_ = s3response.Body.Close()
 }
 
 func (p *Proxy) uploadFinishedSuccessfully(req *http.Request, response *http.Response) bool {
