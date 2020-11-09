@@ -3,6 +3,8 @@ package main
 import (
 	"testing"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -77,6 +79,20 @@ func TestTLSConfigBroker(t *testing.T) {
 	assert.NotPanics(t, func() { TLSConfigBroker(config) })
 	tls := TLSConfigBroker(config)
 	assert.EqualValues(t, tls.ServerName, "RabbitMQ")
+}
+
+func TestLogLevel(t *testing.T) {
+	viper.Reset()
+	viper.Set("server.confFile", "dev_utils/config.yaml")
+	viper.Set("log.level", "debug")
+
+	_ = NewConfig()
+
+	assert.EqualValues(t, log.GetLevel(), log.DebugLevel)
+	viper.Set("log.level", "this_does_not_exist")
+
+	_ = NewConfig()
+	assert.EqualValues(t, log.GetLevel(), log.TraceLevel)
 }
 
 func TestTLSConfigProxy(t *testing.T) {

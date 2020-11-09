@@ -160,17 +160,19 @@ func (c *Config) readConfig() {
 
 	c.Server = s
 
+	intLevel := log.InfoLevel
+
 	if viper.IsSet("log.level") {
+		var err error
 		stringLevel := viper.GetString("log.level")
-		intLevel, err := log.ParseLevel(stringLevel)
+		intLevel, err = log.ParseLevel(stringLevel)
 		if err != nil {
 			log.Printf("Log level '%s' not supported, setting to 'trace'", stringLevel)
 			intLevel = log.TraceLevel
 		}
-		log.SetLevel(intLevel)
-		log.Printf("Setting log level to '%s'", stringLevel)
 	}
 
+	log.SetLevel(intLevel)
 }
 
 func parseConfig() {
