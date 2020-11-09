@@ -131,7 +131,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 
 	// Read any remaining data in the connection and
 	// Close so connection can be reused.
-	_, err = ioutil.ReadAll(s3response.Body)
+	_, _ = ioutil.ReadAll(s3response.Body)
 	_ = s3response.Body.Close()
 }
 
