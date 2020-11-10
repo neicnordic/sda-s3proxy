@@ -27,7 +27,7 @@ type Proxy struct {
 	s3        S3Config
 	auth      Authenticator
 	messenger Messenger
-	tlsConfig *tls.Config
+	client    *http.Client
 }
 
 // S3RequestType is the type of request that we are currently proxying to the
@@ -49,8 +49,10 @@ const (
 
 // NewProxy creates a new S3Proxy. This implements the ServerHTTP interface.
 func NewProxy(s3conf S3Config, auth Authenticator, messenger Messenger, tls *tls.Config) *Proxy {
-	log.SetLevel(log.InfoLevel)
-	return &Proxy{s3conf, auth, messenger, tls}
+	tr := &http.Transport{TLSClientConfig: tls}
+	client := &http.Client{Transport: tr}
+
+	return &Proxy{s3conf, auth, messenger, client}
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -125,6 +127,11 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalln("redirect error")
 	}
+
+	// Read any remaining data in the connection and
+	// Close so connection can be reused.
+	_, _ = ioutil.ReadAll(s3response.Body)
+	_ = s3response.Body.Close()
 }
 
 func (p *Proxy) uploadFinishedSuccessfully(req *http.Request, response *http.Response) bool {
@@ -140,8 +147,6 @@ func (p *Proxy) uploadFinishedSuccessfully(req *http.Request, response *http.Res
 }
 
 func (p *Proxy) forwardToBackend(r *http.Request) (*http.Response, error) {
-	tr := &http.Transport{TLSClientConfig: p.tlsConfig}
-	client := &http.Client{Transport: tr}
 
 	p.resignHeader(r, p.s3.accessKey, p.s3.secretKey, p.s3.url)
 
@@ -155,7 +160,7 @@ func (p *Proxy) forwardToBackend(r *http.Request) (*http.Response, error) {
 	nr.Header = r.Header
 	contentLength, _ := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
 	nr.ContentLength = contentLength
-	return client.Do(nr)
+	return p.client.Do(nr)
 }
 
 // Add bucket to host path
