@@ -67,7 +67,7 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
 		log.Fatalf("channel could not be put into confirm mode: %s", err)
 	}
 
-	if err = channel.ExchangeDeclare(
+	if err = channel.ExchangeDeclarePassive(
 		c.exchange, // name
 		"topic",    // type
 		true,       // durable
