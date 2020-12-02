@@ -123,7 +123,7 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 		}
 	} else {
 		log.Debugf("Found no secret for user %s", curAccessKey)
-		return fmt.Errorf("No secret for user %s found", curAccessKey)
+		return fmt.Errorf("no secret for user %s found", curAccessKey)
 	}
 	return nil
 }
@@ -201,7 +201,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		if claims["sub"] != username {
-			return fmt.Errorf("Token supplied username %s but URL had %s",
+			return fmt.Errorf("token supplied username %s but URL had %s",
 				claims["sub"], username)
 		}
 	}
