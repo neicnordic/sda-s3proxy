@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/lestrrat/go-jwx/jwk"
@@ -158,6 +159,8 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 	token, _ := jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return nil, nil })
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		strIss := fmt.Sprintf("%v", claims["iss"])
+		// Poor string unescaper for elixir
+		strIss = strings.ReplaceAll(strIss, "\\", "")
 		re := regexp.MustCompile(`//([^/]*)`)
 		if token.Header["alg"] == "ES256" {
 			key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
