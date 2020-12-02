@@ -81,7 +81,7 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 		}
 	} else {
 		log.Debugf("No credentials in Authorization header (%s)", auth)
-		return fmt.Errorf("Authorization header had no credentials")
+		return fmt.Errorf("authorization header had no credentials")
 	}
 
 	if curSecretKey, err := u.secretFromID(curAccessKey); err == nil {
@@ -90,7 +90,7 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 
 			signature := re.FindStringSubmatch(auth)
 			if signature == nil || len(signature) < 2 {
-				return fmt.Errorf("Signature not found in Authorization header (%s)", auth)
+				return fmt.Errorf("signature not found in Authorization header (%s)", auth)
 			}
 
 			// Create signing request
@@ -111,13 +111,13 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 			curSignature := re.FindStringSubmatch(nr.Header.Get("Authorization"))
 
 			if curSignature == nil || len(signature) < 2 {
-				return fmt.Errorf("Generated outgoing signature not found or unexpected (header wass %s)",
+				return fmt.Errorf("generated outgoing signature not found or unexpected (header wass %s)",
 					nr.Header.Get("Authorization"))
 			}
 
 			// Compare signatures
 			if curSignature[1] != signature[1] {
-				return fmt.Errorf("Singature for outgoing (%s)request does not match incoming (%s",
+				return fmt.Errorf("signature for outgoing (%s)request does not match incoming (%s",
 					curSignature[1], signature[1])
 			}
 		}
@@ -155,7 +155,7 @@ func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 	}
 
 	log.Debugf("No secret found for id %s in %s", id, u.filename)
-	return "", fmt.Errorf("Cannot find id %s in %s", id, u.filename)
+	return "", fmt.Errorf("cannot find id %s in %s", id, u.filename)
 }
 
 // Authenticate verifies that the token included in the http.Request
@@ -164,7 +164,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 	// Verify signature by parsing the token with the given key
 	tokenStr := r.Header.Get("X-Amz-Security-Token")
 	if tokenStr == "" {
-		return fmt.Errorf("No access token supplied")
+		return fmt.Errorf("no access token supplied")
 	}
 
 	token, _ := jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return nil, nil })
@@ -179,20 +179,20 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 		if token.Header["alg"] == "ES256" {
 			key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
 			if err != nil {
-				return fmt.Errorf("Failed to parse EC public key (%v)", err)
+				return fmt.Errorf("failed to parse EC public key (%v)", err)
 			}
 			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
 			if err != nil {
-				return fmt.Errorf("ES256 signed token not valid %v, (token was %s)", err, tokenStr)
+				return fmt.Errorf("signed token (ES256) not valid %v, (token was %s)", err, tokenStr)
 			}
 		} else if token.Header["alg"] == "RS256" {
 			key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
 			if err != nil {
-				return fmt.Errorf("Failed to parse RSA256 public key (%v)", err)
+				return fmt.Errorf("failed to parse RSA256 public key (%v)", err)
 			}
 			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
 			if err != nil {
-				return fmt.Errorf("RS256 signed token not valid: %v, (token was %s)", err, tokenStr)
+				return fmt.Errorf("signed token (RS256) not valid: %v, (token was %s)", err, tokenStr)
 			}
 		}
 	}
@@ -220,7 +220,7 @@ func (u *ValidateFromToken) getjwtkey(jwtpubkeypath string) error {
 				log.Debug("Reading file: ", filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
 				keyData, err := ioutil.ReadFile(filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
 				if err != nil {
-					return fmt.Errorf("Token file error: %v", err)
+					return fmt.Errorf("token file error: %v", err)
 				}
 				mapkey := re.FindStringSubmatch(info.Name())[1]
 				u.pubkeys[mapkey] = keyData
@@ -228,7 +228,7 @@ func (u *ValidateFromToken) getjwtkey(jwtpubkeypath string) error {
 			return nil
 		})
 	if err != nil {
-		return fmt.Errorf("Failed to get public key files (%v)", err)
+		return fmt.Errorf("failed to get public key files (%v)", err)
 	}
 	return nil
 }
@@ -239,11 +239,11 @@ func (u *ValidateFromToken) getjwtpubkey(jwtpubkeyurl string) error {
 	keyMatch := re.FindStringSubmatch(jwtpubkeyurl)
 
 	if keyMatch == nil {
-		return fmt.Errorf("Not valid link for key %s", jwtpubkeyurl)
+		return fmt.Errorf("not valid link for key %s", jwtpubkeyurl)
 	}
 
 	if len(keyMatch) < 2 {
-		return fmt.Errorf("Unexpected lack of submatches in %s", jwtpubkeyurl)
+		return fmt.Errorf("unexpected lack of submatches in %s", jwtpubkeyurl)
 	}
 
 	key := keyMatch[1]
@@ -253,27 +253,27 @@ func (u *ValidateFromToken) getjwtpubkey(jwtpubkeyurl string) error {
 	}
 	keyEl, err := set.Keys[0].Materialize()
 	if err != nil {
-		return fmt.Errorf("Failed to materialize public key (%v)", err)
+		return fmt.Errorf("failed to materialize public key (%v)", err)
 	}
 	pkeyBytes, err := x509.MarshalPKIXPublicKey(keyEl)
 	if err != nil {
-		return fmt.Errorf("Failed to marshal public key (%v)", err)
+		return fmt.Errorf("failed to marshal public key (%v)", err)
 	}
 	log.Debugf("Getting key from %s", jwtpubkeyurl)
 	r, err := http.Get(jwtpubkeyurl)
 	if err != nil {
-		return fmt.Errorf("Failed to get JWK (%v)", err)
+		return fmt.Errorf("failed to get JWK (%v)", err)
 	}
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return fmt.Errorf("Failed to read key response (%v)", err)
+		return fmt.Errorf("failed to read key response (%v)", err)
 	}
 	defer r.Body.Close()
 
 	var keytype map[string][]map[string]string
 	err = json.Unmarshal(b, &keytype)
 	if err != nil {
-		return fmt.Errorf("Failed to unmarshal key response (%v, response was %s)", err, b)
+		return fmt.Errorf("failed to unmarshal key response (%v, response was %s)", err, b)
 	}
 	keyData := pem.EncodeToMemory(
 		&pem.Block{
