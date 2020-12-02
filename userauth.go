@@ -70,8 +70,9 @@ func NewValidateFromToken(pubkeys map[string][]byte) *ValidateFromToken {
 // in the supplied file.
 func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 	re := regexp.MustCompile("Credential=([^/]+)/")
+	auth := r.Header.Get("Authorization")
 	curAccessKey := ""
-	if tmp := re.FindStringSubmatch(r.Header.Get("Authorization")); tmp != nil {
+	if tmp := re.FindStringSubmatch(auth); tmp != nil {
 		// Check if user requested own bucket
 		curAccessKey = tmp[1]
 		re := regexp.MustCompile("/([^/]+)/")
@@ -79,17 +80,17 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 			return fmt.Errorf("user not authorized to access location")
 		}
 	} else {
-		log.Debug("User not found in signature")
-		return fmt.Errorf("user not found in signature")
+		log.Debugf("No credentials in Authorization header (%s)", auth)
+		return fmt.Errorf("Authorization header had no credentials")
 	}
 
 	if curSecretKey, err := u.secretFromID(curAccessKey); err == nil {
 		if r.Method == http.MethodGet {
 			re := regexp.MustCompile("Signature=(.*)")
 
-			signature := re.FindStringSubmatch(r.Header.Get("Authorization"))
-			if signature == nil {
-				return fmt.Errorf("user signature not found")
+			signature := re.FindStringSubmatch(auth)
+			if signature == nil || len(signature) < 2 {
+				return fmt.Errorf("Signature not found in Authorization header (%s)", auth)
 			}
 
 			// Create signing request
@@ -109,14 +110,20 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 			s3signer.SignV4(*nr, curAccessKey, curSecretKey, "", "us-east-1")
 			curSignature := re.FindStringSubmatch(nr.Header.Get("Authorization"))
 
+			if curSignature == nil || len(signature) < 2 {
+				return fmt.Errorf("Generated outgoing signature not found or unexpected (header wass %s)",
+					nr.Header.Get("Authorization"))
+			}
+
 			// Compare signatures
 			if curSignature[1] != signature[1] {
-				return fmt.Errorf("user signature not authenticated")
+				return fmt.Errorf("Singature for outgoing (%s)request does not match incoming (%s",
+					curSignature[1], signature[1])
 			}
 		}
 	} else {
-		log.Debug("user not existing: ", curAccessKey)
-		return fmt.Errorf("user not existing")
+		log.Debugf("Found no secret for user %s", curAccessKey)
+		return fmt.Errorf("No secret for user %s found", curAccessKey)
 	}
 	return nil
 }
@@ -124,17 +131,17 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 	f, e := os.Open(u.filename)
 	if e != nil {
-		log.Panicf("error opening users files: %s", e)
+		log.Panicf("Error opening users file (%s): %v",
+			u.filename,
+			e)
 	}
 
 	defer func() {
 		if err := f.Close(); err != nil {
-			log.Debug("error on close ")
-			log.Debug(err)
+			log.Debugf("Error on close: %v", err)
 		}
 	}()
 
-	// TODO: Lookup whether to defer a close here?
 	r := csv.NewReader(bufio.NewReader(f))
 	for {
 		record, e := r.Read()
@@ -142,10 +149,13 @@ func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 			break
 		}
 		if record[0] == id {
+			log.Debugf("Returning secret for id %s", id)
 			return record[1], nil
 		}
 	}
-	return "", fmt.Errorf("cannot find id")
+
+	log.Debugf("No secret found for id %s in %s", id, u.filename)
+	return "", fmt.Errorf("Cannot find id %s in %s", id, u.filename)
 }
 
 // Authenticate verifies that the token included in the http.Request
@@ -154,31 +164,35 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 	// Verify signature by parsing the token with the given key
 	tokenStr := r.Header.Get("X-Amz-Security-Token")
 	if tokenStr == "" {
-		return fmt.Errorf("user token not found")
+		return fmt.Errorf("No access token supplied")
 	}
+
 	token, _ := jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return nil, nil })
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		strIss := fmt.Sprintf("%v", claims["iss"])
 		// Poor string unescaper for elixir
 		strIss = strings.ReplaceAll(strIss, "\\", "")
+
+		log.Debugf("Looking for key for %s", strIss)
+
 		re := regexp.MustCompile(`//([^/]*)`)
 		if token.Header["alg"] == "ES256" {
 			key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
 			if err != nil {
-				return fmt.Errorf("failed to parse public key")
+				return fmt.Errorf("Failed to parse EC public key (%v)", err)
 			}
 			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
 			if err != nil {
-				return fmt.Errorf("user token not valid")
+				return fmt.Errorf("ES256 signed token not valid %v, (token was %s)", err, tokenStr)
 			}
 		} else if token.Header["alg"] == "RS256" {
 			key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
 			if err != nil {
-				return fmt.Errorf("failed to parse public key")
+				return fmt.Errorf("Failed to parse RSA256 public key (%v)", err)
 			}
 			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
 			if err != nil {
-				return fmt.Errorf("user token not valid")
+				return fmt.Errorf("RS256 signed token not valid: %v, (token was %s)", err, tokenStr)
 			}
 		}
 	}
@@ -187,7 +201,8 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		if claims["sub"] != username {
-			return fmt.Errorf("token username different that url")
+			return fmt.Errorf("Token supplied username %s but URL had %s",
+				claims["sub"], username)
 		}
 	}
 	return nil
@@ -202,10 +217,10 @@ func (u *ValidateFromToken) getjwtkey(jwtpubkeypath string) error {
 				return err
 			}
 			if info.Mode().IsRegular() {
-				log.Debug("reading file: ", filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
+				log.Debug("Reading file: ", filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
 				keyData, err := ioutil.ReadFile(filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
 				if err != nil {
-					return fmt.Errorf("token file error: %s", err)
+					return fmt.Errorf("Token file error: %v", err)
 				}
 				mapkey := re.FindStringSubmatch(info.Name())[1]
 				u.pubkeys[mapkey] = keyData
@@ -213,7 +228,7 @@ func (u *ValidateFromToken) getjwtkey(jwtpubkeypath string) error {
 			return nil
 		})
 	if err != nil {
-		return fmt.Errorf("failed to get public key files")
+		return fmt.Errorf("Failed to get public key files (%v)", err)
 	}
 	return nil
 }
@@ -221,36 +236,44 @@ func (u *ValidateFromToken) getjwtkey(jwtpubkeypath string) error {
 // Function for fetching the elixir key from the JWK and transform it to []byte
 func (u *ValidateFromToken) getjwtpubkey(jwtpubkeyurl string) error {
 	re := regexp.MustCompile("/([^/]+)/")
-	if re.FindStringSubmatch(jwtpubkeyurl) == nil {
-		return fmt.Errorf("not valid link")
+	keyMatch := re.FindStringSubmatch(jwtpubkeyurl)
+
+	if keyMatch == nil {
+		return fmt.Errorf("Not valid link for key %s", jwtpubkeyurl)
 	}
-	key := re.FindStringSubmatch(jwtpubkeyurl)[1]
+
+	if len(keyMatch) < 2 {
+		return fmt.Errorf("Unexpected lack of submatches in %s", jwtpubkeyurl)
+	}
+
+	key := keyMatch[1]
 	set, err := jwk.Fetch(jwtpubkeyurl)
 	if err != nil {
-		return fmt.Errorf("failed to parse JWK")
+		return fmt.Errorf("jwk.Fetch failed (%v) for %s", err, jwtpubkeyurl)
 	}
 	keyEl, err := set.Keys[0].Materialize()
 	if err != nil {
-		return fmt.Errorf("failed to generate public key")
+		return fmt.Errorf("Failed to materialize public key (%v)", err)
 	}
 	pkeyBytes, err := x509.MarshalPKIXPublicKey(keyEl)
 	if err != nil {
-		return fmt.Errorf("failed to marshal public key")
+		return fmt.Errorf("Failed to marshal public key (%v)", err)
 	}
-	log.Debug("request jwt")
+	log.Debugf("Getting key from %s", jwtpubkeyurl)
 	r, err := http.Get(jwtpubkeyurl)
 	if err != nil {
-		return fmt.Errorf("failed to get JWK")
+		return fmt.Errorf("Failed to get JWK (%v)", err)
 	}
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return fmt.Errorf("failed to parse response")
+		return fmt.Errorf("Failed to read key response (%v)", err)
 	}
 	defer r.Body.Close()
+
 	var keytype map[string][]map[string]string
 	err = json.Unmarshal(b, &keytype)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal response")
+		return fmt.Errorf("Failed to unmarshal key response (%v, response was %s)", err, b)
 	}
 	keyData := pem.EncodeToMemory(
 		&pem.Block{
@@ -259,5 +282,6 @@ func (u *ValidateFromToken) getjwtpubkey(jwtpubkeyurl string) error {
 		},
 	)
 	u.pubkeys[key] = keyData
+	log.Debugf("Registered public key for %s", key)
 	return nil
 }
