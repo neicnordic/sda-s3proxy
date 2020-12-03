@@ -96,7 +96,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	log.Debug("prepend")
 	p.prependBucketToHostPath(r)
 
-	log.Debug("Forwardin to backend")
+	log.Debug("Forwarding to backend")
 	s3response, err := p.forwardToBackend(r)
 
 	if err != nil {
