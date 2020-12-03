@@ -222,8 +222,13 @@ func (u *ValidateFromToken) getjwtkey(jwtpubkeypath string) error {
 				if err != nil {
 					return fmt.Errorf("token file error: %v", err)
 				}
-				mapkey := re.FindStringSubmatch(info.Name())[1]
-				u.pubkeys[mapkey] = keyData
+				nameMatch := re.FindStringSubmatch(info.Name())
+
+				if nameMatch == nil || len(nameMatch) < 2 {
+					return fmt.Errorf("unexpected lack of substring match in filename %s", info.Name())
+				}
+
+				u.pubkeys[nameMatch[1]] = keyData
 			}
 			return nil
 		})
