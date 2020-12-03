@@ -65,13 +65,14 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Allowed
 		p.allowedResponse(w, r)
 	default:
-		log.Debug("not allowed unknown")
+		log.Debugf("Unexpected request (%v) not allowed", r)
 		p.notAllowedResponse(w, r)
 	}
 }
 
 func (p *Proxy) internalServerError(w http.ResponseWriter, r *http.Request) {
 	log.Debug("internal server error")
+	log.Debugf("Internal server error for request (%v)", r)
 	w.WriteHeader(500)
 }
 
@@ -87,8 +88,7 @@ func (p *Proxy) notAuthorized(w http.ResponseWriter, r *http.Request) {
 
 func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	if err := p.auth.Authenticate(r); err != nil {
-		log.Debug("not authenticated")
-		log.Debug(err)
+		log.Debugf("Request not authenticated (%v)", err)
 		p.notAuthorized(w, r)
 		return
 	}
@@ -96,7 +96,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	log.Debug("prepend")
 	p.prependBucketToHostPath(r)
 
-	log.Debug("forward to backend")
+	log.Debug("Forwarding to backend")
 	s3response, err := p.forwardToBackend(r)
 
 	if err != nil {
@@ -171,8 +171,8 @@ func (p *Proxy) prependBucketToHostPath(r *http.Request) {
 	re := regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 
-	log.Debug("incoming path: ", r.URL.Path)
-	log.Debug("incoming raw: ", r.URL.RawQuery)
+	log.Debugf("incoming path: %s", r.URL.Path)
+	log.Debugf("incoming raw: %s", r.URL.RawQuery)
 
 	// Restructure request to query the users folder instead of the general bucket
 	if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?delimiter") {
@@ -191,13 +191,14 @@ func (p *Proxy) prependBucketToHostPath(r *http.Request) {
 		r.URL.Path = "/" + bucket + r.URL.Path
 		log.Debug("new Path: ", r.URL.Path)
 	}
-	log.Info("user ", username, " request type ", r.Method, " path ", r.URL.Path, " at ", time.Now())
+	log.Infof("User: %v, Request type %v, Path: %v", username, r.Method, r.URL.Path)
 }
 
 // Function for signing the headers of the s3 requests
 // Used for for creating a signature for with the default
 // credentials of the s3 service and the user's signature (authentication)
 func (p *Proxy) resignHeader(r *http.Request, accessKey string, secretKey string, backendURL string) *http.Request {
+	log.Debugf("Generating resigning header for %s", backendURL)
 	r.Header.Del("X-Amz-Security-Token")
 	r.Header.Del("X-Forwarded-Port")
 	r.Header.Del("X-Forwarded-Proto")

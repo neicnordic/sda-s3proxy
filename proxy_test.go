@@ -22,7 +22,7 @@ type FakeServer struct {
 func startFakeServer(port string) *FakeServer {
 	l, err := net.Listen("tcp", "127.0.0.1:"+port)
 	if err != nil {
-		panic(fmt.Errorf("Can't create mock server for testing: %s", err))
+		panic(fmt.Errorf("can't create mock server for testing: %s", err))
 	}
 	f := FakeServer{}
 	foo := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

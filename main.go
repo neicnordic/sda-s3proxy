@@ -20,12 +20,12 @@ func main() {
 	// Load keys for JWT verification
 	if config.Server.jwtpubkeyurl != "" {
 		if err := auth.getjwtpubkey(config.Server.jwtpubkeyurl); err != nil {
-			log.Panic("either server.users or server.jwtpubkeyurl should be present to start the service")
+			log.Panicf("Error while getting key %s: %v", config.Server.jwtpubkeyurl, err)
 		}
 	}
 	if config.Server.jwtpubkeypath != "" {
 		if err := auth.getjwtkey(config.Server.jwtpubkeypath); err != nil {
-			log.Panic("either server.users or server.jwtpubkeypath should be present to start the service")
+			log.Panicf("Error while getting key %s: %v", config.Server.jwtpubkeypath, err)
 		}
 	}
 	proxy := NewProxy(config.S3, auth, messenger, tlsProxy)
