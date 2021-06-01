@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/lestrrat/go-jwx/jwk"
@@ -183,9 +184,18 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 	re := regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		if claims["sub"] != username {
-			return fmt.Errorf("token username different that url")
+		// Case for Elixir usernames - Remove everything after @ character
+		if strings.Contains(fmt.Sprintf("%v", claims["sub"]), "@") {
+			claimString := fmt.Sprintf("%v", claims["sub"])
+			if claimString[:strings.Index(claimString, "@")] != username {
+				return fmt.Errorf("token username different that url")
+			}
+		} else {
+			if claims["sub"] != username {
+				return fmt.Errorf("token username different that url")
+			}
 		}
+
 	}
 	return nil
 }
