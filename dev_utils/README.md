@@ -34,6 +34,7 @@ Run the go proxy from the root directory
 
 ```bash
 export GO111MODULE=on
+export SERVER_CONFFILE=dev_utils/config.yaml
 go build main.go
 ./main
 ```
