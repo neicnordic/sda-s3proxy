@@ -20,7 +20,7 @@ For example, to upload a file using the configuration file use
 ```bash
 s3cmd -c <CONF_FILE> put <FILE_TO_UPLOAD> s3://<USERNAME>
 ```
-where `CONF_FILE` is downloaded from the link above and the `USERNAME` can be found in the configuration file under `access_key`.
+where `CONF_FILE` the sample file above or downloaded from the login portal and the `USERNAME` can be found in the configuration file under `access_key`.
 
 ## Backend services
 

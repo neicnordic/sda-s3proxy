@@ -41,7 +41,7 @@ go build main.go
 
 ## Test with s3 configuration file
 To test the implementation locally use the `proxyS3` file located
-in the `dev_utils` folder.
+in the `dev_utils` folder or a file downloaded from the login portal.
 
 ## For example use s3tools to interact with the proxy
 
