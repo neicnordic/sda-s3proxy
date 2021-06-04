@@ -200,11 +200,21 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 	re := regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		if claims["sub"] != username {
-			return fmt.Errorf("token supplied username %s but URL had %s",
-				claims["sub"], username)
+		// Case for Elixir usernames - Remove everything after @ character
+		if strings.Contains(fmt.Sprintf("%v", claims["sub"]), "@") {
+			claimString := fmt.Sprintf("%v", claims["sub"])
+			if claimString[:strings.Index(claimString, "@")] != username {
+				return fmt.Errorf("token supplied username %s but URL had %s",
+					claims["sub"], username)
+			}
+		} else {
+			if claims["sub"] != username {
+				return fmt.Errorf("token supplied username %s but URL had %s",
+					claims["sub"], username)
+			}
 		}
 	}
+
 	return nil
 }
 
