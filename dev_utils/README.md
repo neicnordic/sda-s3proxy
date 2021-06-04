@@ -40,9 +40,8 @@ go build main.go
 ```
 
 ## Test with s3 configuration file
-To test the implementation locally with a file exported from the 
-[login](https://login.ega.nbis.se), change the `host_base` and
-`host_bucket` to `localhost:8000`, where the S3 Upload Proxy is running.
+To test the implementation locally use the `proxyS3` file located
+in the `dev_utils` folder.
 
 ## For example use s3tools to interact with the proxy
 
