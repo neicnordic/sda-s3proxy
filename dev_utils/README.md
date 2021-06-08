@@ -34,9 +34,14 @@ Run the go proxy from the root directory
 
 ```bash
 export GO111MODULE=on
+export SERVER_CONFFILE=dev_utils/config.yaml
 go build main.go
 ./main
 ```
+
+## Test with s3 configuration file
+To test the implementation locally use the `proxyS3` file located
+in the `dev_utils` folder or a file downloaded from the login portal.
 
 ## For example use s3tools to interact with the proxy
 
