@@ -20,6 +20,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	err = checkS3Bucket(config.S3)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	messenger := NewAMQPMessenger(config.Broker, tlsBroker)
 	log.Debug("messenger acquired ", messenger)
 
