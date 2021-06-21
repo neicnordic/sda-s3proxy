@@ -7,10 +7,24 @@ import (
 )
 
 func main() {
-	config := NewConfig()
+	config, err := NewConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+	tlsBroker, err := TLSConfigBroker(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tlsProxy, err := TLSConfigProxy(config)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	tlsBroker := TLSConfigBroker(config)
-	tlsProxy := TLSConfigProxy(config)
+	err = checkS3Bucket(config.S3)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	messenger := NewAMQPMessenger(config.Broker, tlsBroker)
 	log.Debug("messenger acquired ", messenger)
 

@@ -3,11 +3,13 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"path"
 	"reflect"
 	"strings"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -65,16 +67,65 @@ type Config struct {
 
 // NewConfig initializes and parses the config file and/or environment using
 // the viper library.
-func NewConfig() *Config {
-	parseConfig()
+func NewConfig() (*Config, error) {
+	viper.SetConfigName("config")
+	viper.AddConfigPath(".")
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetConfigType("yaml")
+	if viper.IsSet("server.confPath") {
+		cp := viper.GetString("server.confPath")
+		if !strings.HasSuffix(cp, "/") {
+			cp = cp + "/"
+		}
+		ss := strings.Split(strings.TrimLeft(cp, "/"), "/")
+		if ss[0] != "config" {
+			ss = ss[:len(ss)-1]
+		}
+		viper.AddConfigPath(path.Join(ss...))
+	}
+	if viper.IsSet("server.confFile") {
+		viper.SetConfigFile(viper.GetString("server.confFile"))
+	}
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			log.Infoln("No config file found, using ENVs only")
+		} else {
+			return nil, err
+		}
+	}
+
+	requiredConfVars = []string{
+		"broker.host", "broker.port", "broker.user", "broker.password", "broker.exchange", "broker.routingkey", "aws.url", "aws.accesskey", "aws.secretkey", "aws.bucket",
+	}
+
+	for _, s := range requiredConfVars {
+		if !viper.IsSet(s) {
+			return nil, fmt.Errorf("%s not set", s)
+		}
+	}
+
+	if viper.IsSet("log.level") {
+		stringLevel := viper.GetString("log.level")
+		intLevel, err := log.ParseLevel(stringLevel)
+		if err != nil {
+			log.Infof("Log level '%s' not supported, setting to 'trace'", stringLevel)
+			intLevel = log.TraceLevel
+		}
+		log.SetLevel(intLevel)
+		log.Infof("Setting log level to '%s'", stringLevel)
+	}
 
 	c := &Config{}
-	c.readConfig()
+	err := c.readConfig()
+	if err != nil {
+		return nil, err
+	}
 
-	return c
+	return c, nil
 }
 
-func (c *Config) readConfig() {
+func (c *Config) readConfig() error {
 	s3 := S3Config{}
 
 	// All these are required
@@ -105,10 +156,19 @@ func (c *Config) readConfig() {
 	b.port = viper.GetString("broker.port")
 	b.user = viper.GetString("broker.user")
 	b.password = viper.GetString("broker.password")
-	b.vhost = viper.GetString("broker.vhost")
 	b.exchange = viper.GetString("broker.exchange")
 	b.routingKey = viper.GetString("broker.routingKey")
 	b.serverName = viper.GetString("broker.serverName")
+
+	if viper.IsSet("broker.vhost") {
+		if strings.HasPrefix(viper.GetString("broker.vhost"), "/") {
+			b.vhost = viper.GetString("broker.vhost")
+		} else {
+			b.vhost = "/" + viper.GetString("broker.vhost")
+		}
+	} else {
+		b.vhost = "/"
+	}
 
 	if viper.IsSet("broker.ssl") {
 		b.ssl = viper.GetBool("broker.ssl")
@@ -118,7 +178,7 @@ func (c *Config) readConfig() {
 		if b.verifyPeer {
 			// Since verifyPeer is specified, these are required.
 			if !(viper.IsSet("broker.clientCert") && viper.IsSet("broker.clientKey")) {
-				log.Panicln("when broker.verifyPeer is set both broker.clientCert and broker.clientKey is needed")
+				return errors.New("when broker.verifyPeer is set both broker.clientCert and broker.clientKey is needed")
 			}
 			b.clientCert = viper.GetString("broker.clientCert")
 			b.clientKey = viper.GetString("broker.clientKey")
@@ -134,7 +194,7 @@ func (c *Config) readConfig() {
 	s := ServerConfig{}
 
 	if !(viper.IsSet("server.users") || viper.IsSet("server.jwtpubkeypath") || viper.IsSet("server.jwtpubkeyurl")) {
-		log.Panic("either server.users or server.pubkey should be present to start the service")
+		return errors.New("either server.users or server.pubkey should be present to start the service")
 	}
 
 	// User file authentication
@@ -160,53 +220,11 @@ func (c *Config) readConfig() {
 
 	c.Server = s
 
-	intLevel := log.InfoLevel
-
-	if viper.IsSet("log.level") {
-		var err error
-		stringLevel := viper.GetString("log.level")
-		intLevel, err = log.ParseLevel(stringLevel)
-		if err != nil {
-			log.Printf("Log level '%s' not supported, setting to 'trace'", stringLevel)
-			intLevel = log.TraceLevel
-		}
-	}
-
-	log.SetLevel(intLevel)
-}
-
-func parseConfig() {
-	viper.SetConfigName("config")
-	viper.AddConfigPath(".")
-	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.SetConfigType("yaml")
-	if viper.IsSet("server.confPath") {
-		cp := viper.GetString("server.confPath")
-		ss := strings.Split(strings.TrimLeft(cp, "/"), "/")
-		if ss[0] != "config" {
-			ss = ss[:len(ss)-1]
-		}
-		viper.AddConfigPath(path.Join(ss...))
-	}
-	if viper.IsSet("server.confFile") {
-		viper.SetConfigFile(viper.GetString("server.confFile"))
-	}
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			for _, s := range requiredConfVars {
-				if !viper.IsSet(s) {
-					log.Panicf("%s not set", s)
-				}
-			}
-		} else {
-			log.Panicf("fatal error config file: %s", err)
-		}
-	}
+	return nil
 }
 
 // TLSConfigBroker is a helper method to setup TLS for the message broker
-func TLSConfigBroker(c *Config) *tls.Config {
+func TLSConfigBroker(c *Config) (*tls.Config, error) {
 	cfg := new(tls.Config)
 
 	log.Debug("setting up TLS for broker connection")
@@ -230,7 +248,7 @@ func TLSConfigBroker(c *Config) *tls.Config {
 
 		cacert, e := ioutil.ReadFile(cacert) // #nosec this file comes from our configuration
 		if e != nil {
-			log.Fatalf("Failed to append %q to RootCAs: %v", cacert, e)
+			return nil, fmt.Errorf("failed to append %q to RootCAs: %v", cacert, e)
 		}
 		if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
 			log.Debug("no certs appended, using system certs only")
@@ -243,27 +261,23 @@ func TLSConfigBroker(c *Config) *tls.Config {
 	}
 
 	if c.Broker.verifyPeer {
-		if c.Broker.clientCert != "" && c.Broker.clientKey != "" {
-			cert, e := ioutil.ReadFile(c.Broker.clientCert)
-			if e != nil {
-				log.Fatalf("failed to append %q to RootCAs: %v", c.Broker.clientKey, e)
-			}
-			key, e := ioutil.ReadFile(c.Broker.clientKey)
-			if e != nil {
-				log.Fatalf("failed to append %q to RootCAs: %v", c.Broker.clientKey, e)
-			}
-			if certs, e := tls.X509KeyPair(cert, key); e == nil {
-				cfg.Certificates = append(cfg.Certificates, certs)
-			}
-		} else {
-			log.Fatalf("broker error message: no certs")
+		cert, e := ioutil.ReadFile(c.Broker.clientCert)
+		if e != nil {
+			return nil, fmt.Errorf("failed to read client cert %q, reason: %v", c.Broker.clientKey, e)
+		}
+		key, e := ioutil.ReadFile(c.Broker.clientKey)
+		if e != nil {
+			return nil, fmt.Errorf("failed to read client key %q, reason: %v", c.Broker.clientKey, e)
+		}
+		if certs, e := tls.X509KeyPair(cert, key); e == nil {
+			cfg.Certificates = append(cfg.Certificates, certs)
 		}
 	}
-	return cfg
+	return cfg, nil
 }
 
 // TLSConfigProxy is a helper method to setup TLS for the S3 backend.
-func TLSConfigProxy(c *Config) *tls.Config {
+func TLSConfigProxy(c *Config) (*tls.Config, error) {
 	cfg := new(tls.Config)
 
 	log.Debug("setting up TLS for S3 connection")
@@ -282,12 +296,12 @@ func TLSConfigProxy(c *Config) *tls.Config {
 	if c.S3.cacert != "" {
 		cacert, e := ioutil.ReadFile(c.S3.cacert) // #nosec this file comes from our configuration
 		if e != nil {
-			log.Fatalf("failed to append %q to RootCAs: %v", cacert, e)
+			return nil, fmt.Errorf("failed to append %q to RootCAs: %v", cacert, e)
 		}
 		if ok := cfg.RootCAs.AppendCertsFromPEM(cacert); !ok {
 			log.Debug("no certs appended, using system certs only")
 		}
 	}
 
-	return cfg
+	return cfg, nil
 }
