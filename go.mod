@@ -13,7 +13,7 @@ require (
 	github.com/minio/minio-go/v6 v6.0.43
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v0.9.3 // indirect
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/viper v1.8.1
 	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
 	github.com/stretchr/testify v1.7.0
