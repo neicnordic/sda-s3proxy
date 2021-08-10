@@ -9,6 +9,7 @@ updates:
       - "dbampalikis"
       - "jbygdell"
       - "norling"
+      - "kostas-kou"
 
   - package-ecosystem: "github-actions"
     directory: "/"
