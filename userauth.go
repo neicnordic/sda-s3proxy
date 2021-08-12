@@ -167,7 +167,11 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 		return fmt.Errorf("no access token supplied")
 	}
 
-	token, _ := jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return nil, nil })
+	token, err := jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return nil, nil })
+	// Return error if token is broken (without claims)
+	if claims, ok := token.Claims.(jwt.MapClaims); !ok {
+		return fmt.Errorf("broken token (claims are empty): %v\nerror: %s", claims, err)
+	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		strIss := fmt.Sprintf("%v", claims["iss"])
 		// Poor string unescaper for elixir
@@ -214,7 +218,6 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 			}
 		}
 	}
-
 	return nil
 }
 
