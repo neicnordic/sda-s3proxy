@@ -92,7 +92,7 @@ func TestUserTokenAuthenticator_ReadFile(t *testing.T) {
 
 	err := a.getjwtkey("dev_utils/keys/")
 	if assert.Nil(err) {
-		assert.Equal(a.pubkeys[jwtpubkeypath], []byte{45, 45, 45, 45, 45, 66, 69, 71, 73, 78, 32, 80, 85, 66, 76, 73, 67, 32, 75, 69, 89, 45, 45, 45, 45, 45, 10, 77, 73, 73, 67, 73, 106, 65, 78, 66, 103, 107, 113, 104, 107, 105, 71, 57, 119, 48, 66, 65, 81, 69, 70, 65, 65, 79, 67, 65, 103, 56, 65, 77, 73, 73, 67, 67, 103, 75, 67, 65, 103, 69, 65, 120, 74, 113, 72, 97, 50, 97, 104, 43, 48, 66, 54, 71, 69, 55, 75, 50, 51, 74, 104, 10, 107, 106, 76, 57, 97, 117, 120, 107, 118, 98, 97, 119, 110, 107, 68, 98, 71, 90, 48, 56, 56, 82, 75, 85, 47, 47, 103, 81, 102, 70, 105, 88, 54, 51, 98, 107, 79, 86, 70, 113, 110, 114, 73, 73, 88, 104, 116, 107, 120, 112, 53, 118, 79, 82, 86, 118, 119, 118, 48, 50, 120, 88, 85, 50, 10, 112, 90, 113, 122, 76, 83, 113, 48, 77, 80, 97, 113, 84, 48, 76, 97, 111, 79, 54, 79, 72, 104, 66, 69, 116, 99, 111, 119, 112, 72, 119, 89, 68, 120, 66, 50, 88, 79, 97, 73, 53, 49, 87, 110, 55, 76, 83, 54, 53, 90, 97, 75, 112, 121, 117, 74, 82, 84, 51, 48, 86, 52, 110, 99, 10, 53, 48, 103, 107, 114, 57, 49, 53, 115, 98, 97, 54, 121, 90, 53, 49, 77, 102, 103, 99, 52, 111, 66, 122, 55, 65, 108, 71, 74, 105, 111, 108, 68, 101, 117, 107, 98, 67, 115, 101, 84, 113, 83, 103, 89, 106, 105, 107, 53, 119, 81, 106, 108, 108, 50, 54, 75, 76, 86, 89, 52, 50, 48, 65, 10, 87, 103, 83, 48, 49, 109, 77, 113, 88, 106, 48, 72, 116, 57, 90, 47, 70, 103, 57, 49, 117, 43, 102, 69, 101, 87, 67, 112, 65, 50, 99, 100, 88, 78, 57, 88, 117, 57, 100, 101, 88, 48, 49, 121, 84, 118, 110, 78, 105, 47, 88, 73, 65, 57, 66, 117, 120, 105, 73, 105, 79, 112, 69, 67, 10, 76, 71, 75, 67, 89, 108, 113, 116, 70, 66, 97, 52, 80, 88, 77, 86, 76, 67, 69, 104, 85, 50, 106, 101, 81, 53, 112, 73, 112, 121, 47, 69, 108, 116, 119, 107, 112, 72, 47, 90, 87, 43, 112, 76, 70, 107, 87, 89, 86, 108, 107, 107, 47, 90, 114, 80, 75, 108, 82, 65, 106, 107, 53, 66, 10, 120, 72, 52, 74, 56, 108, 101, 49, 52, 97, 73, 109, 112, 116, 50, 80, 109, 88, 70, 104, 118, 104, 120, 56, 81, 77, 77, 82, 115, 108, 56, 109, 57, 110, 90, 105, 54, 119, 100, 79, 107, 74, 98, 101, 48, 68, 110, 53, 101, 89, 47, 100, 43, 49, 80, 102, 100, 103, 97, 98, 78, 56, 52, 114, 10, 85, 109, 73, 108, 69, 79, 83, 67, 50, 69, 97, 116, 120, 76, 105, 69, 88, 85, 110, 86, 102, 70, 73, 111, 67, 43, 50, 106, 104, 98, 118, 119, 77, 80, 119, 102, 49, 121, 122, 48, 98, 82, 99, 102, 68, 120, 120, 121, 113, 54, 75, 108, 51, 80, 73, 77, 65, 70, 119, 103, 107, 80, 79, 113, 10, 116, 106, 73, 107, 70, 113, 48, 110, 67, 72, 68, 101, 120, 75, 72, 101, 108, 76, 65, 102, 83, 47, 102, 99, 108, 85, 69, 73, 55, 54, 72, 103, 112, 55, 81, 98, 68, 121, 107, 113, 104, 43, 85, 81, 57, 65, 118, 114, 57, 83, 105, 70, 110, 118, 43, 79, 109, 70, 97, 89, 83, 109, 87, 81, 10, 83, 113, 117, 73, 65, 52, 54, 72, 43, 107, 100, 72, 67, 104, 113, 65, 118, 109, 53, 119, 122, 84, 84, 98, 80, 98, 70, 79, 88, 118, 47, 52, 116, 83, 115, 57, 73, 103, 99, 122, 90, 48, 100, 97, 112, 118, 121, 109, 68, 69, 106, 51, 107, 100, 98, 74, 115, 70, 73, 117, 53, 53, 90, 110, 10, 88, 86, 84, 102, 112, 82, 116, 81, 102, 76, 109, 102, 48, 65, 72, 68, 67, 67, 100, 104, 100, 101, 84, 116, 82, 110, 98, 43, 107, 98, 57, 87, 114, 98, 81, 81, 113, 122, 119, 110, 47, 82, 98, 67, 70, 108, 108, 103, 97, 105, 119, 88, 70, 114, 110, 89, 84, 49, 111, 55, 74, 51, 114, 76, 10, 105, 116, 81, 118, 80, 106, 65, 110, 81, 110, 70, 69, 68, 75, 120, 89, 78, 108, 43, 75, 47, 50, 107, 67, 65, 119, 69, 65, 65, 81, 61, 61, 10, 45, 45, 45, 45, 45, 69, 78, 68, 32, 80, 85, 66, 76, 73, 67, 32, 75, 69, 89, 45, 45, 45, 45, 45, 10})
+		assert.Equal(a.pubkeys[jwtpubkeypath], []byte{45, 45, 45, 45, 45, 66, 69, 71, 73, 78, 32, 80, 85, 66, 76, 73, 67, 32, 75, 69, 89, 45, 45, 45, 45, 45, 10, 77, 73, 73, 66, 73, 106, 65, 78, 66, 103, 107, 113, 104, 107, 105, 71, 57, 119, 48, 66, 65, 81, 69, 70, 65, 65, 79, 67, 65, 81, 56, 65, 77, 73, 73, 66, 67, 103, 75, 67, 65, 81, 69, 65, 110, 122, 121, 105, 115, 49, 90, 106, 102, 78, 66, 48, 98, 66, 103, 75, 70, 77, 83, 118, 10, 118, 107, 84, 116, 119, 108, 118, 66, 115, 97, 74, 113, 55, 83, 53, 119, 65, 43, 107, 122, 101, 86, 79, 86, 112, 86, 87, 119, 107, 87, 100, 86, 104, 97, 52, 115, 51, 56, 88, 77, 47, 112, 97, 47, 121, 114, 52, 55, 97, 118, 55, 43, 122, 51, 86, 84, 109, 118, 68, 82, 121, 65, 72, 99, 10, 97, 84, 57, 50, 119, 104, 82, 69, 70, 112, 76, 118, 57, 99, 106, 53, 108, 84, 101, 74, 83, 105, 98, 121, 114, 47, 77, 114, 109, 47, 89, 116, 106, 67, 90, 86, 87, 103, 97, 79, 89, 73, 104, 119, 114, 88, 119, 75, 76, 113, 80, 114, 47, 49, 49, 105, 110, 87, 115, 65, 107, 102, 73, 121, 10, 116, 118, 72, 87, 84, 120, 90, 89, 69, 99, 88, 76, 103, 65, 88, 70, 117, 85, 117, 97, 83, 51, 117, 70, 57, 103, 69, 105, 78, 81, 119, 122, 71, 84, 85, 49, 118, 48, 70, 113, 107, 113, 84, 66, 114, 52, 66, 56, 110, 87, 51, 72, 67, 78, 52, 55, 88, 85, 117, 48, 116, 56, 89, 48, 10, 101, 43, 108, 102, 52, 115, 52, 79, 120, 81, 97, 119, 87, 68, 55, 57, 74, 57, 47, 53, 100, 51, 82, 121, 48, 118, 98, 86, 51, 65, 109, 49, 70, 116, 71, 74, 105, 74, 118, 79, 119, 82, 115, 73, 102, 86, 67, 104, 68, 112, 89, 83, 116, 84, 99, 72, 84, 67, 77, 113, 116, 118, 87, 98, 10, 86, 54, 76, 49, 49, 66, 87, 107, 112, 122, 71, 88, 83, 87, 52, 72, 118, 52, 51, 113, 97, 43, 71, 83, 89, 79, 68, 50, 81, 85, 54, 56, 77, 98, 53, 57, 111, 83, 107, 50, 79, 66, 43, 66, 116, 79, 76, 112, 74, 111, 102, 109, 98, 71, 69, 71, 103, 118, 109, 119, 121, 67, 73, 57, 10, 77, 119, 73, 68, 65, 81, 65, 66, 10, 45, 45, 45, 45, 45, 69, 78, 68, 32, 80, 85, 66, 76, 73, 67, 32, 75, 69, 89, 45, 45, 45, 45, 45, 10})
 	}
 }
 
@@ -129,7 +129,7 @@ func TestUserTokenAuthenticator_ValidateSignature(t *testing.T) {
 	// Set up request defaults
 	r, _ := http.NewRequest("", "/", nil)
 	r.Host = "localhost"
-	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2R1bW15LmVnYS5uYmlzLnNlIiwic3ViIjoiZHVtbXkiLCJleHAiOjE3MTk2NzY5ODB9.oa5Lx9MBe_Fv6sBAg3YnsWau9VQLAcnb-6G_0sNx6857qMSeUKnv4bNE7gZ1FGR60ofoPJZ4Pg2Ni2VyYQ1AwP4LNeCGiQ5vAmdNKwt6QrBrsxAeSK3G4OXRD8uoK9t1iK6Gkk0GMZgjnJF9a5YkhYYYMKY6AcXP3ObV5bufb9s86rcZG_bZ__dudH6QbSCVvDnJrzrAK_5Wzoz8DNwTMDZhCGar4_sraj3_5TeXIUHu0zZGg-4ni9VDQ-EXN7ZJbMKmwB_j9EYLhQGA4oz8BbD3y1h9xkrDkqqZWHYcxW1Kn3ZPGfb-bLlTIjzrLOO7MkSZid4p6cKdcpQ_LV5qALRr-L-GMF4RP8nn47_8mw1olXIFSlr-dp8yladploFIsEiol3Hwjvan9hq8QTWRaOj-SAmGqGnkJ3WkS7TTSlRP3IOXho_UVbRtBfbeE9k17aFjdHZQSd54DtWFQL_ot8khyrJGsNKtsyLdVkE1fflrF3G21Mn_H9LHnieNhahx_zRnCS8z7v1L1x2Xe2h8XHyu-Bu9el2weYcMGIUqDWJAs1i5o0XAN5wRr7q7XVBlCpS6vwnmDvYTdGAW2EwpSLkDcwq5ONPtPF8qF95RYPaGaOHeejN7qNIj-aL2pYfr_qLMFuLYV3LH1J1jhqmcvukMmJNyC72h1s872eeGX0Q")
+	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2R1bW15LmVnYS5uYmlzLnNlIiwic3ViIjoiZHVtbXkiLCJleHAiOjE3MTk2NzY5ODB9.XjKAkrd8OCV_ApFiMwEIZiYM4a2QFCr4Ik9A3AqPNtV1Mt2IwyMZHrGGuljkf6YT-ZDsk6ONrXxoL5Vifs7px8BULpcoscWtqmW2TM6tKMe0notaXC8kuPMnGK5VEKul1ayibOK0n2QKoOgHzALELQRC44_oOylUoZaQ9OYpuvF8nBf-dn_lSlxsarzDh9iDI95BiXRW9ARvUGtaLESsS-Oar7Z36P8QM3IV-Omiorv8hKrlg1rjCywF5MlWDQSevLiW9Gj_vwBnyKGX06yYlk8J0vJ_yxh-YFZvhzR149MM-3nvHo8CL3LeO4AVRalvRcFnpZgBu60BlZJ7IGIyAA")
 
 	// Test that a user can access their own bucket
 	r.URL.Path = "/dummy/"
@@ -139,38 +139,54 @@ func TestUserTokenAuthenticator_ValidateSignature(t *testing.T) {
 	// Test that a valid user can't access someone elses bucket
 	r.URL.Path = "/notvalid/"
 	s3signer.SignV4(*r, "username", "testpass", "", "us-east-1")
-	assert.Error(t, a.Authenticate(r))
-
-	r, _ = http.NewRequest("", "/", nil)
-	r.Host = "localhost"
-	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2R1bW15LmVnYS5uYmlzLnNlIiwic3ViIjoiZHVtbXkiLCJleHAiOjE2MTk2NzY5ODB9.CplalxMMMF_96jFpVM61TrhjCKiAK6Y2jdhe3THJJKDRk4y-WnlQmidyFeec9n__OQH_rWtlE3G6sJb1GSS9Wg")
-	r.URL.Path = "/username/"
-	assert.Error(t, a.Authenticate(r))
+	otherBucket := a.Authenticate(r)
+	assert.Equal(t, "token supplied username dummy but URL had notvalid", otherBucket.Error())
 
 	// Elixir token with wrong username
 	r, _ = http.NewRequest("", "/", nil)
 	r.Host = "localhost"
-	r.Header.Set("X-Amz-Security-Token", "eyJraWQiOiJyc2ExIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiJjNTc3M2Y0MWQxN2QyN2JkNTNiMWU2Nzk0YWVkYzMyZDc5MDZlNzc5QGVsaXhpci1ldXJvcGUub3JnIiwiYXVkIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3IiwiYXpwIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3Iiwic2NvcGUiOiJnYTRnaF9wYXNzcG9ydF92MSBvcGVuaWQiLCJpc3MiOiJodHRwczpcL1wvbG9naW4uZWxpeGlyLWN6ZWNoLm9yZ1wvb2lkY1wvIiwiZXhwIjoxNTg1ODQ1Mjc5LCJpYXQiOjE1ODU4NDE2NzksImp0aSI6IjVlNmM2ZDI0LTQyZWItNDA4ZS1iYTIwLTIwMzkwNGUzODhhMSJ9.rRaUcMIl0dQcAUAvGqMmG_B0hSGfP0srdBfAfTksPMItO6-7FpdQ8qtbEJ6avGMsLCJwlIDUuiqHUdXBHVEHdYeP23KfnRnv9ARXt6CsmR4049kHoSMWYNMlo7B6fOh2edA4r-w2e9ENkXCXNSFKg59mQfnUh55K3kmGsQEdAztA0YMJD_QbtmyCAaLAR_lDayJ4mPid6FxmtXaNiPyhoaBTBPZnQx1NBnPWVlvlAMZKALq4BZS5cj8emAa116cj8x1CLrx7UztdjbVqDv3EVXEJOfQczC8RlzS6BTaps_7KMfH2AAMqyMUYHU5N_3o7JZgM9atp0nMAR5U3HcSqRg")
+	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjNTc3M2Y0MWQxN2QyN2JkNTNiMWU2Nzk0YWVkYzMyZDc5MDZlNzc5QGVsaXhpci1ldXJvcGUub3JnIiwiYXVkIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3IiwiYXpwIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3Iiwic2NvcGUiOiJnYTRnaF9wYXNzcG9ydF92MSBvcGVuaWQiLCJpc3MiOiJodHRwczovL2R1bW15LmVnYS5uYmlzLnNlIiwiZXhwIjoxNjkxODUwNzc0LCJpYXQiOjE2Mjg3Nzg4MTUsImp0aSI6IjVlNmM2ZDI0LTQyZWItNDA4ZS1iYTIwLTIwMzkwNGUzODhhMSJ9.hl9A5GQQje-9TICeHFIlek5qi720i6jDu4cHUAtNO9KB4N5iZPw8QiJykWUHo3fDdZtdBfVEDZEe8fnmYXlcn9bt1jUKFUZRMMjm_AyE4RYth3RVg6CFj-KhrxalYVJ4NGl7xts_qI80-vHgf6Ecj0sIJEikPgD4pooPIWiNNwtj3YtqbUslKK2ryaQFT-ZaivEbJsOYjrJr9_925BGw8WTGtqMwspzywoBU3t8G87IIw4yrf4BJXOIn45EFIxaNRoAeuMvrWN_roSFi-oiNxgCzMcdzppyAeVMKP3_WnHyZtLGVKrP3Xs8Wggsmcu5LCFv6dJIp0kuTXINeSb60ng")
 	r.URL.Path = "/username/"
-	assert.Error(t, a.Authenticate(r))
+	wrongUsername := a.Authenticate(r)
+	assert.Equal(t, "token supplied username c5773f41d17d27bd53b1e6794aedc32d7906e779@elixir-europe.org but URL had username", wrongUsername.Error())
 
-	// Elixir token not valid
+	// Expired Elixir token
 	r, _ = http.NewRequest("", "/", nil)
 	r.Host = "localhost"
-	r.Header.Set("X-Amz-Security-Token", "eyJraWQiOiJyc2ExIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiJjNTc3M2Y0MWQxN2QyN2JkNTNiMWU2Nzk0YWVkYzMyZDc5MDZlNzc5QGVsaXhpci1ldXJvcGUub3JnIiwiYXVkIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3IiwiYXpwIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3Iiwic2NvcGUiOiJnYTRnaF9wYXNzcG9ydF92MSBvcGVuaWQiLCJpc3MiOiJodHRwczpcL1wvbG9naW4uZWxpeGlyLWN6ZWNoLm9yZ1wvb2lkY1wvIiwiZXhwIjoxNTg1ODMxOTEwLCJpYXQiOjE1ODU4MjgzMTAsImp0aSI6IjdkMDU3NTVhLWRkNjktNDRjZS05MzIwLThlOGRiZjIwNzExNSJ9.bOsxAe8F7i78MfI1FBF2Wiy6g_uO74rOCFe3hBe0Qpf-RhswWnI0ys8EDfxJlqbPj39VX1n9gSphgd8ivGzsf0f00OvHqC17RSN0l6J3FUjyyNi2bWmaiejIzIfxXI0Kyyy45cr-NT5F5m95yuA1O-KpTGtRgDK5zDnhj3XIxBvIZX_pzhI9okY6FzL5fH7ZU4LhunP0iBJfgswK6l2Dy6A4fPhfVtZRU1EeJUBVTJ7YIY-FBvRHAGPgpLFvcOeN4WM8R6mwQ3hJcvcVPAjq1769meOkLsWxpPrbMvxfrtRjd4ANrnvwiEH-syV_ELXm2ntqMlFuFdoJ3CXY9pMzgw")
+	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkdW1teSIsImF1ZCI6IjE1MTM3NjQ1LTMxNTMtNGQ0OS05ZGRiLTU5NDAyN2NkNGNhNyIsImF6cCI6IjE1MTM3NjQ1LTMxNTMtNGQ0OS05ZGRiLTU5NDAyN2NkNGNhNyIsInNjb3BlIjoiZ2E0Z2hfcGFzc3BvcnRfdjEgb3BlbmlkIiwiaXNzIjoiaHR0cHM6Ly9kdW1teS5lZ2EubmJpcy5zZSIsImV4cCI6MTU2NjIyNTE3NCwiaWF0IjoxNTY1NjIwMzc0LCJqdGkiOiI1ZTZjNmQyNC00MmViLTQwOGUtYmEyMC0yMDM5MDRlMzg4YTEifQ.Ojycuf8UoGm2kcR--LeWlPDSQs23fuBqT2Kq98_rIAsAaZSTkeX3KwwWS0dqRKsIYWbQDfagvGaF4-ZfYk9Lh2lKtaQDLH88DS2vXL3Q3UGi3_ZsSDvdrjV8esEWNX7vlJtm0uRdVh-MJ1Uw3akuCzE5EsUEdgafKx-0aSXA3oJgIoBrFoP92lUIpx0HSyfc-oQOLousbpXDmvt374HUiCRs7lpyg9NmhIy-R68s1nrVAKknz9g8IwsNAAZPNjQgb9_BgOZUs8QELs-2-xJ-XiqHHx3UqFli11fvdDQuOy4OyJg9aJa-BBDzpY50B43UDWF6assiYEeA41HRY1WYCA")
+	r.URL.Path = "/dummy/"
+	assert.Nil(t, a.Authenticate(r))
+
+	// Expired Elixir token with wrong username
+	r, _ = http.NewRequest("", "/", nil)
+	r.Host = "localhost"
+	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjNTc3M2Y0MWQxN2QyN2JkNTNiMWU2Nzk0YWVkYzMyZDc5MDZlNzc5QGVsaXhpci1ldXJvcGUub3JnIiwiYXVkIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3IiwiYXpwIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3Iiwic2NvcGUiOiJnYTRnaF9wYXNzcG9ydF92MSBvcGVuaWQiLCJpc3MiOiJodHRwczovL2R1bW15LmVnYS5uYmlzLnNlIiwiZXhwIjoxNTY2MjI1MTc0LCJpYXQiOjE1NjU2MjAzNzQsImp0aSI6IjVlNmM2ZDI0LTQyZWItNDA4ZS1iYTIwLTIwMzkwNGUzODhhMSJ9.NnYNAHdt5TdogX9teimp3Qv8aibvp45RmZk_tRrLvkl52mn2wi6zkbultdafNhl9Q6iS3qwaevF_eG-OlZ__LlHrS_BUUxYEpblRNptJRLMlkVNkI4r1JPdOjEfLjL6ZDYIu4jHElTZQA-V1Vw3N5KRXvTcYE9zlH_zLfMYW9v5rxlJGRnSe6Bn87KONggAu2MOOcICt-ZKijSF-MD-6T5uyaD0zU0fq6QYAU8WyLuEQGzxF7m3D4eKXvbtzNnaCpLz7mFDawvu_KLawBwatM5AUoNZt9KCIG-fAJvctEcxbfHncfs5E8ZdPrMqQvPiLp2jprFWmMhcicai_N1-t1Q")
 	r.URL.Path = "/username/"
-	assert.Error(t, a.Authenticate(r))
+	expiredToken := a.Authenticate(r)
+	assert.Equal(t, "token supplied username c5773f41d17d27bd53b1e6794aedc32d7906e779@elixir-europe.org but URL had username", expiredToken.Error())
+
+	// Elixir token is not valid (e.g. issued in a future time)
+	r, _ = http.NewRequest("", "/", nil)
+	r.Host = "localhost"
+	r.Header.Set("X-Amz-Security-Token", "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjNTc3M2Y0MWQxN2QyN2JkNTNiMWU2Nzk0YWVkYzMyZDc5MDZlNzc5QGVsaXhpci1ldXJvcGUub3JnIiwiYXVkIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3IiwiYXpwIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3Iiwic2NvcGUiOiJnYTRnaF9wYXNzcG9ydF92MSBvcGVuaWQiLCJpc3MiOiJodHRwczovL2R1bW15LmVnYS5uYmlzLnNlIiwiZXhwIjoxNTY2MjI1MTc0LCJpYXQiOjE2NjA5MTk1NzQsImp0aSI6IjVlNmM2ZDI0LTQyZWItNDA4ZS1iYTIwLTIwMzkwNGUzODhhMSJ9.QVFMZvDcLqD0O2O-55Gfqw4mC132UGTKn0eO8Mdf75CSW1tKBL06u5hg1Kf8AiN8xiXJZUh4hmZklpdczqCaEeAx9LuRLQTVY1duv65z1aAfXoMtZtmOQ_dGcQVtEJYApvIMaV2qSa5Vyi5eoKilyWs-UTVfjEOSC_z76RoO2IkkIJWMGu4EY2B2dPdINgud-dtUg95lD1vMw-hm3c3kH1ZWo2Lix7YX09XIltUHuLI_o7NlUm5GxFVkZoZOD_PWo8P3ulcQHQ-LRESEEilk_a-WPUDtI6Cu90USiwwRK3eqRpdgKnoWeIXSpl_yfGf2RjfqTQmCYPAdF0i-lynF_g")
+	r.URL.Path = "/username/"
+	nonvalidToken := a.Authenticate(r)
+	// The error output is huge so a smaller part is compared
+	assert.Equal(t, "signed token (RS256) not valid:", nonvalidToken.Error()[0:31])
 
 	// Elixir tokens broken
 	r, _ = http.NewRequest("", "/", nil)
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", "JraWQiOiJyc2ExIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiJjNTc3M2Y0MWQxN2QyN2JkNTNiMWU2Nzk0YWVkYzMyZDc5MDZlNzc5QGVsaXhpci1ldXJvcGUub3JnIiwiYXVkIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3IiwiYXpwIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3Iiwic2NvcGUiOiJnYTRnaF9wYXNzcG9ydF92MSBvcGVuaWQiLCJpc3MiOiJodHRwczpcL1wvbG9naW4uZWxpeGlyLWN6ZWNoLm9yZ1wvb2lkY1wvIiwiZXhwIjoxNTg1ODMxOTEwLCJpYXQiOjE1ODU4MjgzMTAsImp0aSI6IjdkMDU3NTVhLWRkNjktNDRjZS05MzIwLThlOGRiZjIwNzExNSJ9.bOsxAe8F7i78MfI1FBF2Wiy6g_uO74rOCFe3hBe0Qpf-RhswWnI0ys8EDfxJlqbPj39VX1n9gSphgd8ivGzsf0f00OvHqC17RSN0l6J3FUjyyNi2bWmaiejIzIfxXI0Kyyy45cr-NT5F5m95yuA1O-KpTGtRgDK5zDnhj3XIxBvIZX_pzhI9okY6FzL5fH7ZU4LhunP0iBJfgswK6l2Dy6A4fPhfVtZRU1EeJUBVTJ7YIY-FBvRHAGPgpLFvcOeN4WM8R6mwQ3hJcvcVPAjq1769meOkLsWxpPrbMvxfrtRjd4ANrnvwiEH-syV_ELXm2ntqMlFuFdoJ3CXY9pMzgw")
 	r.URL.Path = "/username/"
-	assert.Error(t, a.Authenticate(r))
+	brokenToken := a.Authenticate(r)
+	assert.Equal(t, "broken token (claims are empty): map[]", brokenToken.Error()[0:38])
 
 	r, _ = http.NewRequest("", "/", nil)
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", "randomeyJraWQiOiJyc2ExIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiJjNTc3M2Y0MWQxN2QyN2JkNTNiMWU2Nzk0YWVkYzMyZDc5MDZlNzc5QGVsaXhpci1ldXJvcGUub3JnIiwiYXVkIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3IiwiYXpwIjoiMTUxMzc2NDUtMzE1My00ZDQ5LTlkZGItNTk0MDI3Y2Q0Y2E3Iiwic2NvcGUiOiJnYTRnaF9wYXNzcG9ydF92MSBvcGVuaWQiLCJpc3MiOiJodHRwczpcL1wvbG9naW4uZWxpeGlyLWN6ZWNoLm9yZ1wvb2lkY1wvIiwiZXhwIjoxNTg1ODMxOTEwLCJpYXQiOjE1ODU4MjgzMTAsImp0aSI6IjdkMDU3NTVhLWRkNjktNDRjZS05MzIwLThlOGRiZjIwNzExNSJ9.bOsxAe8F7i78MfI1FBF2Wiy6g_uO74rOCFe3hBe0Qpf-RhswWnI0ys8EDfxJlqbPj39VX1n9gSphgd8ivGzsf0f00OvHqC17RSN0l6J3FUjyyNi2bWmaiejIzIfxXI0Kyyy45cr-NT5F5m95yuA1O-KpTGtRgDK5zDnhj3XIxBvIZX_pzhI9okY6FzL5fH7ZU4LhunP0iBJfgswK6l2Dy6A4fPhfVtZRU1EeJUBVTJ7YIY-FBvRHAGPgpLFvcOeN4WM8R6mwQ3hJcvcVPAjq1769meOkLsWxpPrbMvxfrtRjd4ANrnvwiEH-syV_ELXm2ntqMlFuFdoJ3CXY9pMzgw")
 	r.URL.Path = "/username/"
 	assert.Error(t, a.Authenticate(r))
+	brokenToken2 := a.Authenticate(r)
+	assert.Equal(t, "broken token (claims are empty): map[]", brokenToken2.Error()[0:38])
 }
