@@ -40,3 +40,29 @@ func TestCreateRSAToken(t *testing.T) {
 
 	defer os.RemoveAll("dummy-folder")
 }
+
+func TestCreateECkeys(t *testing.T) {
+	privateK, publicK, _ := MakeFolder("dummy-folder")
+	assert.Nil(t, CreateECkeys(privateK, publicK))
+
+	defer os.RemoveAll("dummy-folder")
+}
+
+func TestParsePrivateECKey(t *testing.T) {
+	privateK, publicK, _ := MakeFolder("dummy-folder")
+	CreateECkeys(privateK, publicK)
+	_, err := ParsePrivateECKey(privateK, "/dummy.ega.nbis.se")
+	assert.Nil(t, err)
+
+	defer os.RemoveAll("dummy-folder")
+}
+
+func TestCreateECToken(t *testing.T) {
+	privateK, publicK, _ := MakeFolder("dummy-folder")
+	CreateECkeys(privateK, publicK)
+	ParsedPrKey, _ := ParsePrivateECKey(privateK, "/dummy.ega.nbis.se")
+	_, err := CreateECToken(ParsedPrKey, "RS256", "JWT", defaultTokenClaims)
+	assert.Nil(t, err)
+
+	defer os.RemoveAll("dummy-folder")
+}
