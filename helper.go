@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -31,8 +33,8 @@ func MakeFolder(path string) (string, string, error) {
 	return prKeyPath, pubKeyPath, nil
 }
 
-// ParsePrivateKey reads and parses the private key
-func ParsePrivateKey(path, keyName string) (*rsa.PrivateKey, error) {
+// ParsePrivateRSAKey reads and parses the RSA private key
+func ParsePrivateRSAKey(path, keyName string) (*rsa.PrivateKey, error) {
 	keyPath := path + keyName
 	prKey, err := ioutil.ReadFile(filepath.Clean(keyPath))
 	if err != nil {
@@ -92,8 +94,8 @@ func CreateRSAkeys(prPath, pubPath string) error {
 
 }
 
-// CreateToken creates a token
-func CreateToken(key *rsa.PrivateKey, headerAlg, headerType string, tokenClaims map[string]interface{}) (string, error) {
+// CreateRSAToken creates an RSA token
+func CreateRSAToken(key *rsa.PrivateKey, headerAlg, headerType string, tokenClaims map[string]interface{}) (string, error) {
 	token := jwt.New(jwt.SigningMethodRS256)
 	token.Header["alg"] = headerAlg
 	token.Header["typ"] = headerType
@@ -108,5 +110,85 @@ func CreateToken(key *rsa.PrivateKey, headerAlg, headerType string, tokenClaims 
 	}
 
 	return tokenString, nil
+
+}
+
+// CreateECToken creates an EC token
+func CreateECToken(key *ecdsa.PrivateKey, headerAlg, headerType string, tokenClaims map[string]interface{}) (string, error) {
+	token := jwt.New(jwt.SigningMethodES256)
+	token.Header["alg"] = headerAlg
+	token.Header["typ"] = headerType
+	claims := make(jwt.MapClaims)
+	for key, value := range tokenClaims {
+		claims[key] = value
+	}
+	token.Claims = claims
+	tokenString, err := token.SignedString(key)
+	if err != nil {
+		return "no-token", err
+	}
+
+	return tokenString, nil
+
+}
+
+// ParsePrivateECKey reads and parses the EC private key
+func ParsePrivateECKey(path, keyName string) (*ecdsa.PrivateKey, error) {
+	keyPath := path + keyName
+	prKey, err := ioutil.ReadFile(filepath.Clean(keyPath))
+	if err != nil {
+		return nil, err
+	}
+
+	prKeyParsed, err := jwt.ParseECPrivateKeyFromPEM(prKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return prKeyParsed, nil
+}
+
+// CreateECkeys creates the RSA key pair
+func CreateECkeys(prPath, pubPath string) error {
+	privatekey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return err
+	}
+	publickey := &privatekey.PublicKey
+
+	// dump private key to file
+	privateKeyBytes, _ := x509.MarshalECPrivateKey(privatekey)
+	privateKeyBlock := &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: privateKeyBytes,
+	}
+	privatePem, err := os.Create(prPath + "/dummy.ega.nbis.se")
+	if err != nil {
+		return err
+	}
+	err = pem.Encode(privatePem, privateKeyBlock)
+	if err != nil {
+		return err
+	}
+
+	// dump public key to file
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publickey)
+	if err != nil {
+		return err
+	}
+	publicKeyBlock := &pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: publicKeyBytes,
+	}
+	publicPem, err := os.Create(pubPath + "/dummy.ega.nbis.se.pub")
+	if err != nil {
+		return err
+	}
+	err = pem.Encode(publicPem, publicKeyBlock)
+	if err != nil {
+		return err
+	}
+
+	return nil
 
 }

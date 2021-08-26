@@ -190,7 +190,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 			v, _ := err.(*jwt.ValidationError)
 			// If error is for expired token continue
 			if err != nil && v.Errors != jwt.ValidationErrorExpired {
-				return fmt.Errorf("signed token (ES256) not valid %v, (token was %s)", err, tokenStr)
+				return fmt.Errorf("signed token (ES256) not valid: %v, (token was %s)", err, tokenStr)
 			}
 		} else if token.Header["alg"] == "RS256" {
 			key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])

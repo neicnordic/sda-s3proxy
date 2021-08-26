@@ -22,20 +22,20 @@ func TestCreateRSAkeys(t *testing.T) {
 	defer os.RemoveAll("dummy-folder")
 }
 
-func TestParsePrivateKey(t *testing.T) {
+func TestParsePrivateRSAKey(t *testing.T) {
 	privateK, publicK, _ := MakeFolder("dummy-folder")
 	CreateRSAkeys(privateK, publicK)
-	_, err := ParsePrivateKey(privateK, "/dummy.ega.nbis.se")
+	_, err := ParsePrivateRSAKey(privateK, "/dummy.ega.nbis.se")
 	assert.Nil(t, err)
 
 	defer os.RemoveAll("dummy-folder")
 }
 
-func TestCreateToken(t *testing.T) {
+func TestCreateRSAToken(t *testing.T) {
 	privateK, publicK, _ := MakeFolder("dummy-folder")
 	CreateRSAkeys(privateK, publicK)
-	ParsedPrKey, _ := ParsePrivateKey(privateK, "/dummy.ega.nbis.se")
-	_, err := CreateToken(ParsedPrKey, "RS256", "JWT", defaultTokenClaims)
+	ParsedPrKey, _ := ParsePrivateRSAKey(privateK, "/dummy.ega.nbis.se")
+	_, err := CreateRSAToken(ParsedPrKey, "RS256", "JWT", defaultTokenClaims)
 	assert.Nil(t, err)
 
 	defer os.RemoveAll("dummy-folder")
