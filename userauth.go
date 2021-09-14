@@ -15,7 +15,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/minio/minio-go/v6/pkg/s3signer"
 	log "github.com/sirupsen/logrus"

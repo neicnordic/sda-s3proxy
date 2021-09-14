@@ -38,7 +38,7 @@ func TestUserFileAuthenticator_ReadFile(t *testing.T) {
 
 func TestUserFileAuthenticator_NoFile(t *testing.T) {
 	a := NewValidateFromFile("1298379somerandomfilenamethatwedonthaveinthefilesystem1928739")
-	assert.Panics(t, func() { a.secretFromID("random") })
+	assert.Panics(t, func() { _, _ = a.secretFromID("random") })
 }
 
 func TestUserFileAuthenticator_ValidateSignature(t *testing.T) {
@@ -124,7 +124,7 @@ func TestUserTokenAuthenticator_ValidateSignature(t *testing.T) {
 
 	a := NewValidateFromToken(pubkeys)
 	a.pubkeys = make(map[string][]byte)
-	a.getjwtkey(jwtpubkeypath)
+	_ = a.getjwtkey(jwtpubkeypath)
 
 	// Set up request defaults
 	r, _ := http.NewRequest("", "/", nil)

@@ -91,7 +91,10 @@ func (m *AMQPMessenger) SendMessage(message Event) error {
 
 	// Shouldn't this be setup once and for all?
 	confirms := m.channel.NotifyPublish(make(chan amqp.Confirmation, 100))
-	defer confirmOne(confirms)
+
+	defer func() {
+		_ = confirmOne(confirms)
+	}()
 
 	body, e := json.Marshal(message)
 	if e != nil {
