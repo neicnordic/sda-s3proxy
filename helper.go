@@ -91,7 +91,6 @@ func CreateRSAkeys(prPath, pubPath string) error {
 	}
 
 	return nil
-
 }
 
 // CreateRSAToken creates an RSA token
@@ -110,7 +109,6 @@ func CreateRSAToken(key *rsa.PrivateKey, headerAlg, headerType string, tokenClai
 	}
 
 	return tokenString, nil
-
 }
 
 // CreateECToken creates an EC token
@@ -129,7 +127,6 @@ func CreateECToken(key *ecdsa.PrivateKey, headerAlg, headerType string, tokenCla
 	}
 
 	return tokenString, nil
-
 }
 
 // ParsePrivateECKey reads and parses the EC private key
@@ -148,7 +145,7 @@ func ParsePrivateECKey(path, keyName string) (*ecdsa.PrivateKey, error) {
 	return prKeyParsed, nil
 }
 
-// CreateECkeys creates the RSA key pair
+// CreateECkeys creates the EC key pair
 func CreateECkeys(prPath, pubPath string) error {
 	privatekey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -190,5 +187,4 @@ func CreateECkeys(prPath, pubPath string) error {
 	}
 
 	return nil
-
 }
