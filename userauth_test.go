@@ -112,6 +112,7 @@ func TestUserTokenAuthenticator_ValidateSignature_RSA(t *testing.T) {
 	demoPrKeyName := "/dummy.ega.nbis.se"
 	prKeyPath, pubKeyPath, err := MakeFolder(demoKeysPath)
 	assert.NoError(t, err)
+
 	err = CreateRSAkeys(prKeyPath, pubKeyPath)
 	assert.NoError(t, err)
 
@@ -210,7 +211,7 @@ func TestUserTokenAuthenticator_ValidateSignature_RSA(t *testing.T) {
 }
 
 func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
-	// Create temp demo rsa key pair
+	// Create temp demo ec key pair
 	demoKeysPath := "demo-ec-keys"
 	demoPrKeyName := "/dummy.ega.nbis.se"
 	prKeyPath, pubKeyPath, err := MakeFolder(demoKeysPath)
@@ -307,6 +308,54 @@ func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
 	r.URL.Path = "/username/"
 	brokenToken2 := a.Authenticate(r)
 	assert.Equal(t, "broken token (claims are empty): map[]", brokenToken2.Error()[0:38])
+
+	defer os.RemoveAll(demoKeysPath)
+}
+
+func TestWrongKeyType_RSA(t *testing.T) {
+	// Create temp demo ec key pair
+	demoKeysPath := "demo-ec-keys"
+	demoPrKeyName := "/dummy.ega.nbis.se"
+	prKeyPath, pubKeyPath, err := MakeFolder(demoKeysPath)
+	assert.NoError(t, err)
+
+	err = CreateECkeys(prKeyPath, pubKeyPath)
+	assert.NoError(t, err)
+
+	var pubkeys map[string][]byte
+	jwtpubkeypath := demoKeysPath + "/public-key/"
+
+	a := NewValidateFromToken(pubkeys)
+	a.pubkeys = make(map[string][]byte)
+	_ = a.getjwtkey(jwtpubkeypath)
+
+	// Parse demo private key
+	_, err = ParsePrivateRSAKey(prKeyPath, demoPrKeyName)
+	assert.Equal(t, "x509: failed to parse private key (use ParseECPrivateKey instead for this key format)", err.Error())
+
+	defer os.RemoveAll(demoKeysPath)
+}
+
+func TestWrongKeyType_EC(t *testing.T) {
+	// Create temp demo ec key pair
+	demoKeysPath := "demo-rsa-keys"
+	demoPrKeyName := "/dummy.ega.nbis.se"
+	prKeyPath, pubKeyPath, err := MakeFolder(demoKeysPath)
+	assert.NoError(t, err)
+
+	err = CreateRSAkeys(prKeyPath, pubKeyPath)
+	assert.NoError(t, err)
+
+	var pubkeys map[string][]byte
+	jwtpubkeypath := demoKeysPath + "/public-key/"
+
+	a := NewValidateFromToken(pubkeys)
+	a.pubkeys = make(map[string][]byte)
+	_ = a.getjwtkey(jwtpubkeypath)
+
+	// Parse demo private key
+	_, err = ParsePrivateECKey(prKeyPath, demoPrKeyName)
+	assert.Equal(t, "x509: failed to parse private key (use ParsePKCS1PrivateKey instead for this key format)", err.Error())
 
 	defer os.RemoveAll(demoKeysPath)
 }
