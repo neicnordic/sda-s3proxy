@@ -204,6 +204,8 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 			if err != nil && v.Errors != jwt.ValidationErrorExpired {
 				return fmt.Errorf("signed token (RS256) not valid: %v, (token was %s)", err, tokenStr)
 			}
+		} else {
+			return fmt.Errorf("unsupported algorithm %s", token.Header["alg"])
 		}
 	}
 	// Check whether token username and filepath match
