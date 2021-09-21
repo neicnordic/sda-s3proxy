@@ -67,6 +67,16 @@ var (
 		"iat":   time.Now().Add(time.Hour * 2).Unix(),
 		"jti":   "5e6c6d24-42eb-408e-ba20-203904e388a1",
 	}
+
+	wrongTokenAlgClaims = map[string]interface{}{
+		"iss":       "Online JWT Builder",
+		"iat":       time.Now().Unix(),
+		"exp":       time.Now().Add(time.Hour * 2).Unix(),
+		"aud":       "4e9416a7-3515-447a-b848-d4ac7a57f",
+		"sub":       "pleasefix@snurre-in-the-house.org",
+		"auth_time": "1632207224",
+		"jti":       "cc847f9c-7608-4b4f-9c6f-6e734813355f",
+	}
 )
 
 // MakeFolder creates a folder and subfolders for the keys pair
@@ -169,6 +179,24 @@ func CreateRSAToken(key *rsa.PrivateKey, headerAlg, headerType string, tokenClai
 // CreateECToken creates an EC token
 func CreateECToken(key *ecdsa.PrivateKey, headerAlg, headerType string, tokenClaims map[string]interface{}) (string, error) {
 	token := jwt.New(jwt.SigningMethodES256)
+	token.Header["alg"] = headerAlg
+	token.Header["typ"] = headerType
+	claims := make(jwt.MapClaims)
+	for key, value := range tokenClaims {
+		claims[key] = value
+	}
+	token.Claims = claims
+	tokenString, err := token.SignedString(key)
+	if err != nil {
+		return "no-token", err
+	}
+
+	return tokenString, nil
+}
+
+// CreateHSToken creates an HS token
+func CreateHSToken(key []byte, headerAlg, headerType string, tokenClaims map[string]interface{}) (string, error) {
+	token := jwt.New(jwt.SigningMethodHS256)
 	token.Header["alg"] = headerAlg
 	token.Header["typ"] = headerType
 	claims := make(jwt.MapClaims)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"net/http"
 	"os"
 	"testing"
@@ -225,7 +226,7 @@ func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
 
 	a := NewValidateFromToken(pubkeys)
 	a.pubkeys = make(map[string][]byte)
-	a.getjwtkey(jwtpubkeypath)
+	_ = a.getjwtkey(jwtpubkeypath)
 
 	// Parse demo private key
 	prKeyParsed, err := ParsePrivateECKey(prKeyPath, demoPrKeyName)
@@ -358,4 +359,26 @@ func TestWrongKeyType_EC(t *testing.T) {
 	assert.Equal(t, "x509: failed to parse private key (use ParsePKCS1PrivateKey instead for this key format)", err.Error())
 
 	defer os.RemoveAll(demoKeysPath)
+}
+
+func TestUserTokenAuthenticator_ValidateSignature_HS(t *testing.T) {
+	//Create random secret
+	key := make([]byte, 256)
+	_, err := rand.Read(key)
+	assert.NoError(t, err)
+
+	// Create HS256 token
+	wrongAlgToken, err := CreateHSToken(key, "HS256", "JWT", wrongTokenAlgClaims)
+	assert.NoError(t, err)
+
+	testPub := make(map[string][]byte)
+	a := NewValidateFromToken(testPub)
+	a.pubkeys = make(map[string][]byte)
+
+	r, _ := http.NewRequest("", "/", nil)
+	r.Host = "localhost"
+	r.Header.Set("X-Amz-Security-Token", wrongAlgToken)
+	r.URL.Path = "/username/"
+	WrongAlg := a.Authenticate(r)
+	assert.Equal(t, "unsupported algorithm HS256", WrongAlg.Error())
 }

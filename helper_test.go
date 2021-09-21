@@ -24,7 +24,7 @@ func TestCreateRSAkeys(t *testing.T) {
 
 func TestParsePrivateRSAKey(t *testing.T) {
 	privateK, publicK, _ := MakeFolder("dummy-folder")
-	CreateRSAkeys(privateK, publicK)
+	_ = CreateRSAkeys(privateK, publicK)
 	_, err := ParsePrivateRSAKey(privateK, "/dummy.ega.nbis.se")
 	assert.Nil(t, err)
 
@@ -33,7 +33,7 @@ func TestParsePrivateRSAKey(t *testing.T) {
 
 func TestCreateRSAToken(t *testing.T) {
 	privateK, publicK, _ := MakeFolder("dummy-folder")
-	CreateRSAkeys(privateK, publicK)
+	_ = CreateRSAkeys(privateK, publicK)
 	ParsedPrKey, _ := ParsePrivateRSAKey(privateK, "/dummy.ega.nbis.se")
 	_, err := CreateRSAToken(ParsedPrKey, "RS256", "JWT", defaultTokenClaims)
 	assert.Nil(t, err)
@@ -50,7 +50,7 @@ func TestCreateECkeys(t *testing.T) {
 
 func TestParsePrivateECKey(t *testing.T) {
 	privateK, publicK, _ := MakeFolder("dummy-folder")
-	CreateECkeys(privateK, publicK)
+	_ = CreateECkeys(privateK, publicK)
 	_, err := ParsePrivateECKey(privateK, "/dummy.ega.nbis.se")
 	assert.Nil(t, err)
 
@@ -59,7 +59,7 @@ func TestParsePrivateECKey(t *testing.T) {
 
 func TestCreateECToken(t *testing.T) {
 	privateK, publicK, _ := MakeFolder("dummy-folder")
-	CreateECkeys(privateK, publicK)
+	_ = CreateECkeys(privateK, publicK)
 	ParsedPrKey, _ := ParsePrivateECKey(privateK, "/dummy.ega.nbis.se")
 	_, err := CreateECToken(ParsedPrKey, "RS256", "JWT", defaultTokenClaims)
 	assert.Nil(t, err)
