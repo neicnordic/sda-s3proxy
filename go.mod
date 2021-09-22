@@ -14,7 +14,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v0.9.3 // indirect
 	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/viper v1.8.1
+	github.com/spf13/viper v1.9.0
 	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
 	github.com/stretchr/testify v1.7.0
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
