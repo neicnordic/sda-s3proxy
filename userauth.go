@@ -186,8 +186,11 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 				return fmt.Errorf("failed to parse EC public key (%v)", err)
 			}
 			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
-			if err != nil {
-				return fmt.Errorf("signed token (ES256) not valid %v, (token was %s)", err, tokenStr)
+			// Validate the error
+			v, _ := err.(*jwt.ValidationError)
+			// If error is for expired token continue
+			if err != nil && v.Errors != jwt.ValidationErrorExpired {
+				return fmt.Errorf("signed token (ES256) not valid: %v, (token was %s)", err, tokenStr)
 			}
 		} else if token.Header["alg"] == "RS256" {
 			key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
@@ -195,9 +198,14 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 				return fmt.Errorf("failed to parse RSA256 public key (%v)", err)
 			}
 			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
-			if err != nil {
+			// Validate the error
+			v, _ := err.(*jwt.ValidationError)
+			// If error is for expired token continue
+			if err != nil && v.Errors != jwt.ValidationErrorExpired {
 				return fmt.Errorf("signed token (RS256) not valid: %v, (token was %s)", err, tokenStr)
 			}
+		} else {
+			return fmt.Errorf("unsupported algorithm %s", token.Header["alg"])
 		}
 	}
 	// Check whether token username and filepath match
