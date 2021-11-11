@@ -32,10 +32,11 @@ type Messenger interface {
 
 // AMQPMessenger is a Messenger that sends messages to a local AMQP broker
 type AMQPMessenger struct {
-	connection *amqp.Connection
-	channel    *amqp.Channel
-	exchange   string
-	routingKey string
+	connection   *amqp.Connection
+	channel      *amqp.Channel
+	exchange     string
+	routingKey   string
+	confirmsChan <-chan amqp.Confirmation
 }
 
 // NewAMQPMessenger creates a new messenger that can communicate with a backend
@@ -79,22 +80,17 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
 		log.Fatalf("exchange declare: %s", err)
 	}
 
-	return &AMQPMessenger{connection, channel, c.exchange, c.routingKey}
+	confirmsChan := make(chan amqp.Confirmation, 1)
+	if err := channel.Confirm(false); err != nil {
+		close(confirmsChan)
+		log.Fatalf("Channel could not be put into confirm mode: %s\n", err)
+	}
+
+	return &AMQPMessenger{connection, channel, c.exchange, c.routingKey, channel.NotifyPublish(confirmsChan)}
 }
 
 // SendMessage sends message to RabbitMQ if the upload is finished
 func (m *AMQPMessenger) SendMessage(message Event) error {
-	// Set channel
-	if e := m.channel.Confirm(false); e != nil {
-		log.Fatalf("channel could not be put into confirm mode: %s", e)
-	}
-
-	// Shouldn't this be setup once and for all?
-	confirms := m.channel.NotifyPublish(make(chan amqp.Confirmation, 100))
-
-	defer func() {
-		_ = confirmOne(confirms)
-	}()
 
 	body, e := json.Marshal(message)
 	if e != nil {
@@ -112,26 +108,23 @@ func (m *AMQPMessenger) SendMessage(message Event) error {
 			Headers:         amqp.Table{},
 			ContentEncoding: "UTF-8",
 			ContentType:     "application/json",
-			DeliveryMode:    amqp.Transient, // 1=non-persistent, 2=persistent
+			DeliveryMode:    amqp.Persistent,
 			CorrelationId:   corrID.String(),
 			Priority:        0, // 0-9
 			Body:            []byte(body),
-			// a bunch of application/implementation-specific fields
 		},
 	)
-	return err
-}
+	if err != nil {
+		return err
+	}
 
-// // One would typically keep a channel of publishings, a sequence number, and a
-// // set of unacknowledged sequence numbers and loop until the publishing channel
-// // is closed.
-func confirmOne(confirms <-chan amqp.Confirmation) error {
-	confirmed := <-confirms
+	confirmed := <-m.confirmsChan
 	if !confirmed.Ack {
 		return fmt.Errorf("failed delivery of delivery tag: %d", confirmed.DeliveryTag)
 	}
-	log.Printf("confirmed delivery with delivery tag: %d", confirmed.DeliveryTag)
+	log.Debugf("confirmed delivery with delivery tag: %d", confirmed.DeliveryTag)
 	return nil
+
 }
 
 // BuildMqURI builds the MQ URI
