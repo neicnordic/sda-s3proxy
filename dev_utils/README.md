@@ -14,7 +14,7 @@ putting the following in the hosts array your `~/.mc/config.json` file:
 ```json
 "proxydev": {
     "url": "http://localhost:9000",
-    "accessKey": "ElexirID",
+    "accessKey": "ElixirID",
     "secretKey": "987654321",
     "api": "s3v4",
     "lookup": "auto"

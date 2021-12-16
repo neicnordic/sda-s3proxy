@@ -4,7 +4,7 @@ services:
     command: server /data
     container_name: s3
     environment:
-      - MINIO_ACCESS_KEY=ElexirID
+      - MINIO_ACCESS_KEY=ElixirID
       - MINIO_SECRET_KEY=987654321
     healthcheck:
       test: ["CMD", "curl", "-fkq", "https://localhost:9000/minio/health/live"]
@@ -25,7 +25,7 @@ services:
       - s3_backend
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc config host add s3 https://s3:9000 ElexirID 987654321;
+      /usr/bin/mc config host add s3 https://s3:9000 ElixirID 987654321;
       /usr/bin/mc rm -r --force s3/test;
       /usr/bin/mc mb s3/test;
       exit 0;
@@ -60,7 +60,7 @@ services:
     restart: always
     environment:
       - AWS_URL=https://s3:9000
-      - AWS_ACCESSKEY=ElexirID
+      - AWS_ACCESSKEY=ElixirID
       - AWS_SECRETKEY=987654321
       - AWS_BUCKET=test
       - AWS_REGION=us-east-1

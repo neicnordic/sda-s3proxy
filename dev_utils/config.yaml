@@ -1,7 +1,7 @@
 aws:
   url: "https://localhost:9000"
   readypath: "/minio/health/ready"
-  accessKey: "ElexirID"
+  accessKey: "ElixirID"
   secretKey: "987654321"
   bucket: "test"
   region: "us-east-1"
