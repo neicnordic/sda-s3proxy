@@ -1,12 +1,18 @@
 # Dev environment setup recomendations
 
+This guide uses the
+[minio client](https://docs.min.io/minio/baremetal/reference/minio-cli/minio-mc.html)
+(mc) for testing.
+
 ## minio s3 server
 
-Run the minio local thing by starting it with
+The S3Proxy development environment is run through docker compose, and can be
+started from this directory using:
 
 ```bash
-docker-compose up -d
+docker compose up
 ```
+(use the `-d` flag if you wish to run docker in the background).
 
 Then it's possible to trace all the requests that come to minio by first
 putting the following in the hosts array your `~/.mc/config.json` file:
