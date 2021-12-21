@@ -116,6 +116,15 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Writing non-200 to the response before the headers propagates the error
+	// to the s3cmd client.
+	// Writing 200 here breaks uploads though, and writing non-200 codes after
+	// the headers result in the error message always being
+	// "MD5 Sums don't match!".
+	if s3response.StatusCode < 200 || s3response.StatusCode > 299 {
+		w.WriteHeader(s3response.StatusCode)
+	}
+
 	// Redirect answer
 	log.Debug("redirect answer")
 	for header, values := range s3response.Header {
@@ -261,7 +270,7 @@ func (p *Proxy) detectRequestType(r *http.Request) S3RequestType {
 }
 
 // CreateMessageFromRequest is a function that can take a http request and
-// figure out the correct message to send from it.
+// figure out the correct rabbitmq message to send from it.
 func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 	// Extract username for request's url path
 	re := regexp.MustCompile("/[^/]+/([^/]+)/")

@@ -18,6 +18,7 @@ services:
       - ./certs/ca.crt:/root/.minio/certs/CAs/public.crt
       - ./certs/s3.crt:/root/.minio/certs/public.crt
       - ./certs/s3.key:/root/.minio/certs/private.key
+      - data:/data
   createbucket:
     container_name: buckets
     image: minio/mc
@@ -59,6 +60,7 @@ services:
       - s3_backend
     restart: always
     environment:
+      - LOG_LEVEL=info
       - AWS_URL=https://s3:9000
       - AWS_ACCESSKEY=ElixirID
       - AWS_SECRETKEY=987654321
@@ -90,7 +92,17 @@ services:
       - ./certs/proxy.crt:/certs/proxy.crt
       - ./certs/proxy.key:/certs/proxy.key
       - ./users.csv:/users.csv
-      - ./keys/:/keys/
+      - ./keys:/keys
     ports:
       - "8000:8000"
       - "8001:8001"
+
+volumes:
+  data:
+    # These settings only work on linux (including WSL2), and can be used to
+    # test when the disk is full.
+    # driver: local
+    # driver_opts:
+    #   type: tmpfs
+    #   device: tmpfs
+    #   o: "size=100m"
