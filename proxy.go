@@ -116,10 +116,10 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Writing non-200 to the response before the headers propagates the error
+	// Writing non-200 to the response before the headers propagate the error
 	// to the s3cmd client.
 	// Writing 200 here breaks uploads though, and writing non-200 codes after
-	// the headers result in the error message always being
+	// the headers results in the error message always being
 	// "MD5 Sums don't match!".
 	if s3response.StatusCode < 200 || s3response.StatusCode > 299 {
 		w.WriteHeader(s3response.StatusCode)
