@@ -7,6 +7,13 @@ import (
 )
 
 func main() {
+	// Create a function to handle panic and exit gracefully
+	defer func() {
+		if err := recover(); err != nil {
+			log.Fatal("Could not recover, exiting")
+		}
+	}()
+
 	config, err := NewConfig()
 	if err != nil {
 		log.Fatal(err)

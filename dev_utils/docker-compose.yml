@@ -4,20 +4,21 @@ services:
     command: server /data
     container_name: s3
     environment:
-      - MINIO_ACCESS_KEY=ElexirID
+      - MINIO_ACCESS_KEY=ElixirID
       - MINIO_SECRET_KEY=987654321
     healthcheck:
       test: ["CMD", "curl", "-fkq", "https://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 20s
       retries: 3
-    image: minio/minio:RELEASE.2019-10-12T01-39-57Z
+    image: minio/minio:RELEASE.2021-02-14T04-01-33Z
     ports:
       - "9000:9000"
     volumes:
       - ./certs/ca.crt:/root/.minio/certs/CAs/public.crt
       - ./certs/s3.crt:/root/.minio/certs/public.crt
       - ./certs/s3.key:/root/.minio/certs/private.key
+      - data:/data
   createbucket:
     container_name: buckets
     image: minio/mc
@@ -25,7 +26,7 @@ services:
       - s3_backend
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc config host add s3 https://s3:9000 ElexirID 987654321;
+      /usr/bin/mc config host add s3 https://s3:9000 ElixirID 987654321;
       /usr/bin/mc rm -r --force s3/test;
       /usr/bin/mc mb s3/test;
       exit 0;
@@ -59,8 +60,9 @@ services:
       - s3_backend
     restart: always
     environment:
+      - LOG_LEVEL=info
       - AWS_URL=https://s3:9000
-      - AWS_ACCESSKEY=ElexirID
+      - AWS_ACCESSKEY=ElixirID
       - AWS_SECRETKEY=987654321
       - AWS_BUCKET=test
       - AWS_REGION=us-east-1
@@ -90,7 +92,17 @@ services:
       - ./certs/proxy.crt:/certs/proxy.crt
       - ./certs/proxy.key:/certs/proxy.key
       - ./users.csv:/users.csv
-      - ./keys/:/keys/
+      - ./keys:/keys
     ports:
       - "8000:8000"
       - "8001:8001"
+
+volumes:
+  data:
+    # These settings only work on linux (including WSL2), and can be used to
+    # test when the disk is full.
+    # driver: local
+    # driver_opts:
+    #   type: tmpfs
+    #   device: tmpfs
+    #   o: "size=100m"
