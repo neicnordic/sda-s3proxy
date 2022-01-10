@@ -15,7 +15,7 @@ docker compose up
 (use the `-d` flag if you wish to run docker in the background).
 
 Then it's possible to trace all the requests that come to minio by first
-putting the following in the hosts array your `~/.mc/config.json` file:
+putting the following in the hosts array of your `~/.mc/config.json` file:
 
 ```json
 "proxydev": {
