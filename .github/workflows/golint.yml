@@ -6,7 +6,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v3
     - name: check
       uses: nbisweden/golang-github-actions@v1.2.0
       with:
@@ -16,7 +16,7 @@ jobs:
     name: Imports
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v3
     - name: check
       uses: nbisweden/golang-github-actions@v1.2.0
       with:
@@ -26,7 +26,7 @@ jobs:
     name: Shadow
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v3
     - name: check
       uses: nbisweden/golang-github-actions@v1.2.0
       with:
@@ -36,7 +36,7 @@ jobs:
     name: StaticCheck
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v3
     - name: check
       uses: nbisweden/golang-github-actions@v1.2.0
       with:
@@ -46,7 +46,7 @@ jobs:
     name: Sec
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v3
     - name: check
       uses: nbisweden/golang-github-actions@v1.2.0
       with:
