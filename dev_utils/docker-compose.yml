@@ -85,6 +85,7 @@ services:
       - SERVER_USERS=/users.csv
       - SERVER_JWTPUBKEYPATH=/keys/
       - SERVER_JWTPUBEYURL=https://login.elixir-czech.org/oidc/jwk
+      - LOG_FORMAT=json
     volumes:
       - ./certs/ca.crt:/certs/ca.crt
       - ./certs/client.crt:/certs/client.crt
