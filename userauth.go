@@ -83,7 +83,7 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 		log.Debugf("No credentials in Authorization header (%s)", auth)
 		return fmt.Errorf("authorization header had no credentials")
 	}
-
+	//nolint:nestif
 	if curSecretKey, err := u.secretFromID(curAccessKey); err == nil {
 		if r.Method == http.MethodGet {
 			re := regexp.MustCompile("Signature=(.*)")
@@ -172,6 +172,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 	if claims, ok := token.Claims.(jwt.MapClaims); !ok {
 		return fmt.Errorf("broken token (claims are empty): %v\nerror: %s", claims, err)
 	}
+	//nolint:nestif
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		strIss := fmt.Sprintf("%v", claims["iss"])
 		// Poor string unescaper for elixir
@@ -211,6 +212,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) error {
 	// Check whether token username and filepath match
 	re := regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
+	//nolint:nestif
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		// Case for Elixir usernames - Remove everything after @ character
 		if strings.Contains(fmt.Sprintf("%v", claims["sub"]), "@") {
