@@ -3,7 +3,7 @@ module github.com/NBISweden/S3-Upload-Proxy
 go 1.13
 
 require (
-	github.com/aws/aws-sdk-go v1.43.27
+	github.com/aws/aws-sdk-go v1.43.38
 	github.com/golang-jwt/jwt/v4 v4.4.1
 	github.com/google/uuid v1.3.0
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
