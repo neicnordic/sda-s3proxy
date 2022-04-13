@@ -50,7 +50,7 @@ func (h *HealthCheck) RunHealthChecks() {
 }
 
 func (h *HealthCheck) httpsGetCheck(url string, timeout time.Duration) healthcheck.Check {
-	cfg := &tls.Config{}
+	cfg := &tls.Config{MinVersion: tls.VersionTLS13}
 	cfg.RootCAs = h.tlsConfig.RootCAs
 	tr := &http.Transport{TLSClientConfig: cfg}
 	client := http.Client{
@@ -66,7 +66,7 @@ func (h *HealthCheck) httpsGetCheck(url string, timeout time.Duration) healthche
 		if e != nil {
 			return e
 		}
-		_ = resp.Body.Close() //ignoring error
+		_ = resp.Body.Close() // ignoring error
 		if resp.StatusCode != 200 {
 			return fmt.Errorf("returned status %d", resp.StatusCode)
 		}

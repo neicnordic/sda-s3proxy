@@ -78,6 +78,7 @@ func (u *AlwaysDeny) Authenticate(r *http.Request) error {
 	return fmt.Errorf("denied")
 }
 
+// nolint:bodyclose
 func TestServeHTTP_disallowed(t *testing.T) {
 	// Start fake server
 	f := startFakeServer("9023")
@@ -178,10 +179,11 @@ func TestServeHTTP_S3Unresponsive(t *testing.T) {
 	r.Method = "GET"
 	r.URL, _ = url.Parse("/asdf/asdf")
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 500, w.Result().StatusCode)
+	assert.Equal(t, 500, w.Result().StatusCode) // nolint:bodyclose
 	assert.Equal(t, false, messenger.CheckAndRestore())
 }
 
+// nolint:bodyclose
 func TestServeHTTP_allowed(t *testing.T) {
 	// Start fake server
 	f := startFakeServer("9024")
