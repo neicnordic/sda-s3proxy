@@ -15,3 +15,12 @@ updates:
     open-pull-requests-limit: 10
     reviewers:
       - "neicnordic/sensitive-data-development-collaboration"
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    reviewers:
+      - "neicnordic/sensitive-data-development-collaboration"
+
