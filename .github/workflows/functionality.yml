@@ -26,7 +26,7 @@ jobs:
         run: pip3 install s3cmd
 
       - name: Deploy containers
-        run: cd dev_utils && docker-compose up -d
+        run: cd dev_utils && GOLANG_VERSION=${{ matrix.go-version }} docker-compose up -d --build
 
       - name: Wait for containers to start
         run: |
