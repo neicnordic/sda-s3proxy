@@ -34,17 +34,12 @@ jobs:
           done
 
       - name: Calc coverage 
-        run: go test -tags live -covermode=count -coverprofile=coverage.out
+        run: go test -tags live -coverprofile=coverage.txt -covermode=atomic
 
-      - name: Convert coverage to lcov
-        uses: jandelgado/gcov2lcov-action@v1.0.8
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.0
         with:
-            infile: coverage.out
-            outfile: coverage.lcov
-
-      - name: Coveralls
-        uses: coverallsapp/github-action@1.1.3
-        with:
-            github-token: ${{ secrets.GITHUB_TOKEN }}
-            path-to-lcov: coverage.lcov
-
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.txt
+          flags: unittests
+          fail_ci_if_error: false
