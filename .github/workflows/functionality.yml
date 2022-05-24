@@ -5,11 +5,14 @@ jobs:
   test:
     name: s3cmd
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [1.17, 1.18]
     steps:
-      - name: Set up Go 1.16
+      - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v3
         with:
-          go-version: '1.16'
+          go-version: ${{ matrix.go-version }}
 
       - name: Check out source code
         uses: actions/checkout@v3
@@ -23,7 +26,7 @@ jobs:
         run: pip3 install s3cmd
 
       - name: Deploy containers
-        run: cd dev_utils && docker-compose up -d
+        run: cd dev_utils && GOLANG_VERSION=${{ matrix.go-version }} docker-compose up -d --build
 
       - name: Wait for containers to start
         run: |

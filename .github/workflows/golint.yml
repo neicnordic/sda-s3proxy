@@ -1,11 +1,19 @@
-name: static check
+name: linting check
 on: [push, pull_request]
 jobs:
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: [1.17, 1.18]
     steps:
+    - name: Set up Go ${{ matrix.go-version }}
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
     - uses: actions/checkout@master
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v3.1.0
