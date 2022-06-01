@@ -193,7 +193,7 @@ func (p *Proxy) prependBucketToHostPath(r *http.Request) {
 			r.URL.RawQuery = r.URL.RawQuery + "&prefix=" + username + "%2F"
 		}
 		log.Debug("new Raw Query: ", r.URL.RawQuery)
-	} else if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?location") {
+	} else if r.Method == http.MethodGet && (strings.Contains(r.URL.String(), "?location") || strings.Contains(r.URL.String(), "&prefix")) {
 		r.URL.Path = "/" + bucket + "/"
 		log.Debug("new Path: ", r.URL.Path)
 	} else if r.Method == http.MethodPost || r.Method == http.MethodPut {
