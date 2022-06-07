@@ -17,6 +17,9 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@v3
 
+      - name: generate certificates
+        run: cd dev_utils && /bin/sh make_certs.sh
+
       - name: Deploy containers
         run: cd dev_utils && docker-compose up -d s3_backend mq_server
 
