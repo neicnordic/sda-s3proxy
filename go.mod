@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/aws/aws-sdk-go v1.44.42
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.4.1
+	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/google/uuid v1.3.0
 	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
 	github.com/johannesboyne/gofakes3 v0.0.0-20210608054100-92d5d4af5fde
