@@ -113,7 +113,7 @@ check_output_status "$output"
 
 # Enable/disable bucket access logging
 echo "Trying to change the access logging for a bucket"
-output=$(s3cmd -c proxyS3 accesslog s3://dummy/ 2>&1 | grep -q $unauthorized)
+output=$(s3cmd -c proxyS3 accesslog s3://dummy/ 2>&1 | grep -q $nobucket)
 check_output_status "$output"
 
 echo "All tests have passed"
