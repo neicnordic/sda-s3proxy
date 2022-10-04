@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 # Function checking that a file was uploaded to the S3 backend
 function check_output_status() {
