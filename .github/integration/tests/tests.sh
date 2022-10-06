@@ -1,9 +1,8 @@
 #!/bin/bash
-set -e
 
 # Function checking that a file was uploaded to the S3 backend
 function check_output_status() {
-    if [[ $1 -eq 0 ]] ; then
+    if [[ $1 -eq 0 ]]; then
         echo -e "\u2705 Test passed, expected response found"
     else
         echo -e "\u274c Test failed, expected response not found"
@@ -11,16 +10,15 @@ function check_output_status() {
     fi
 }
 
-
 cd dev_utils || exit 1
 
-s3cmd -c directS3 put README.md s3://test/some_user/ > /dev/null 2>&1 || exit 1
+s3cmd -c directS3 put README.md s3://test/some_user/ >/dev/null 2>&1 || exit 1
 
 echo "- Testing allowed actions"
 
 # Put file into bucket
 echo "Trying to upload a file to user's bucket"
-output=$(s3cmd -c proxyS3 put README.md s3://dummy/ > /dev/null 2>&1)
+output=$(s3cmd -c proxyS3 put README.md s3://dummy/ >/dev/null 2>&1)
 check_output_status "$output"
 
 # List objects
