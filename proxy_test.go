@@ -201,7 +201,6 @@ func TestServeHTTP_allowed(t *testing.T) {
 	}
 	messenger := NewMockMessenger()
 	proxy := NewProxy(s3conf, NewAlwaysAllow(), messenger, new(tls.Config))
-	//proxy := NewProxy(s3conf, NewValidateFromFile("./dev_utils/users.csv"), NewMockMessenger(), s, new(tls.Config))
 
 	// List files works
 	r, _ := http.NewRequest("GET", "/username/file", nil)

@@ -76,7 +76,7 @@ func NewConfig() (*Config, error) {
 	if viper.IsSet("server.confPath") {
 		cp := viper.GetString("server.confPath")
 		if !strings.HasSuffix(cp, "/") {
-			cp = cp + "/"
+			cp += "/"
 		}
 		ss := strings.Split(strings.TrimLeft(cp, "/"), "/")
 		if ss[0] != "config" {
@@ -280,6 +280,7 @@ func TLSConfigBroker(c *Config) (*tls.Config, error) {
 			cfg.Certificates = append(cfg.Certificates, certs)
 		}
 	}
+
 	return cfg, nil
 }
 

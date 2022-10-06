@@ -56,7 +56,6 @@ services:
       context: ../
       args: 
         GOLANG_VERSION: $GOLANG_VERSION
-
     image: neicnordic/sda-inbox-s3proxy
     container_name: proxy
     depends_on:
