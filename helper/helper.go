@@ -18,9 +18,10 @@ import (
 // Global variables for test token creation
 var (
 	DefaultTokenClaims = map[string]interface{}{
-		"iss": "https://dummy.ega.nbis.se",
-		"sub": "dummy",
-		"exp": time.Now().Add(time.Hour * 2).Unix(),
+		"iss":   "https://dummy.ega.nbis.se",
+		"sub":   "dummy",
+		"exp":   time.Now().Add(time.Hour * 2).Unix(),
+		"pilot": "dummy-pilot",
 	}
 
 	WrongUserClaims = map[string]interface{}{
