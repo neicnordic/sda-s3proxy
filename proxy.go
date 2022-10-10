@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/minio/minio-go/v6/pkg/s3signer"
 	log "github.com/sirupsen/logrus"
 )
@@ -87,7 +88,8 @@ func (p *Proxy) notAuthorized(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
-	if err := p.auth.Authenticate(r); err != nil {
+	claims, err := p.auth.Authenticate(r)
+	if err != nil {
 		log.Debugf("Request not authenticated (%v)", err)
 		p.notAuthorized(w, r)
 		return
@@ -109,7 +111,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	// Send message to upstream
 	if p.uploadFinishedSuccessfully(r, s3response) {
 		log.Debug("create message")
-		message, _ := p.CreateMessageFromRequest(r)
+		message, _ := p.CreateMessageFromRequest(r, claims)
 		if err = p.messenger.SendMessage(message); err != nil {
 			log.Debug("error when sending message")
 			log.Debug(err)
@@ -271,7 +273,7 @@ func (p *Proxy) detectRequestType(r *http.Request) S3RequestType {
 
 // CreateMessageFromRequest is a function that can take a http request and
 // figure out the correct rabbitmq message to send from it.
-func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
+func (p *Proxy) CreateMessageFromRequest(r *http.Request, claims jwt.MapClaims) (Event, error) {
 	// Extract username for request's url path
 	re := regexp.MustCompile("/[^/]+/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
@@ -291,7 +293,7 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request) (Event, error) {
 	event.Username = username
 	checksum.Type = "sha256"
 	event.Checksum = []interface{}{checksum}
-	log.Info("user ", event.Username, " uploaded file ", event.Filepath, " with checksum ", checksum.Value, " at ", time.Now())
+	log.Info("user ", event.Username, " with pilot ", claims["pilot"], " uploaded file ", event.Filepath, " with checksum ", checksum.Value, " at ", time.Now())
 	return event, nil
 }
 

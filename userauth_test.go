@@ -15,7 +15,8 @@ import (
 func TestAlwaysAuthenticator(t *testing.T) {
 	a := NewAlwaysAllow()
 	r, _ := http.NewRequest("Get", "/", nil)
-	assert.Nil(t, a.Authenticate(r))
+	_, err := a.Authenticate(r)
+	assert.Nil(t, err)
 }
 
 func TestUserFileAuthenticator_ReadFile(t *testing.T) {
@@ -141,12 +142,14 @@ func TestUserTokenAuthenticator_ValidateSignature_RSA(t *testing.T) {
 	// Test that a user can access their own bucket
 	r.URL.Path = "/dummy/"
 	s3signer.SignV4(*r, "username", "testpass", "", "us-east-1")
-	assert.Nil(t, a.Authenticate(r))
+	token, err := a.Authenticate(r)
+	assert.Nil(t, err)
+	assert.Equal(t, token["pilot"], helper.DefaultTokenClaims["pilot"])
 
 	// Test that a valid user can't access someone elses bucket
 	r.URL.Path = "/notvalid/"
 	s3signer.SignV4(*r, "username", "testpass", "", "us-east-1")
-	otherBucket := a.Authenticate(r)
+	_, otherBucket := a.Authenticate(r)
 	assert.Equal(t, "token supplied username dummy but URL had notvalid", otherBucket.Error())
 
 	// Create and test Elixir token with wrong username
@@ -157,7 +160,7 @@ func TestUserTokenAuthenticator_ValidateSignature_RSA(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", wrongUserToken)
 	r.URL.Path = "/username/"
-	wrongUsername := a.Authenticate(r)
+	_, wrongUsername := a.Authenticate(r)
 	assert.Equal(t, "token supplied username c5773f41d17d27bd53b1e6794aedc32d7906e779@elixir-europe.org but URL had username", wrongUsername.Error())
 
 	// Create and test expired Elixir token
@@ -168,7 +171,8 @@ func TestUserTokenAuthenticator_ValidateSignature_RSA(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", expiredToken)
 	r.URL.Path = "/dummy/"
-	assert.Nil(t, a.Authenticate(r))
+	_, err = a.Authenticate(r)
+	assert.Nil(t, err)
 
 	// Create and test expired Elixir token with wrong username
 	expiredAndWrongUserToken, err := helper.CreateRSAToken(prKeyParsed, "RS256", "JWT", helper.ExpiredAndWrongUserClaims)
@@ -178,7 +182,7 @@ func TestUserTokenAuthenticator_ValidateSignature_RSA(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", expiredAndWrongUserToken)
 	r.URL.Path = "/username/"
-	expiredAndWrongUser := a.Authenticate(r)
+	_, expiredAndWrongUser := a.Authenticate(r)
 	assert.Equal(t, "token supplied username c5773f41d17d27bd53b1e6794aedc32d7906e779@elixir-europe.org but URL had username", expiredAndWrongUser.Error())
 
 	// Elixir token is not valid (e.g. issued in a future time)
@@ -189,7 +193,7 @@ func TestUserTokenAuthenticator_ValidateSignature_RSA(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", nonValidToken)
 	r.URL.Path = "/username/"
-	nonvalidToken := a.Authenticate(r)
+	_, nonvalidToken := a.Authenticate(r)
 	// The error output is huge so a smaller part is compared
 	assert.Equal(t, "signed token (RS256) not valid:", nonvalidToken.Error()[0:31])
 
@@ -198,15 +202,16 @@ func TestUserTokenAuthenticator_ValidateSignature_RSA(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", defaultToken[3:])
 	r.URL.Path = "/username/"
-	brokenToken := a.Authenticate(r)
+	_, brokenToken := a.Authenticate(r)
 	assert.Equal(t, "broken token (claims are empty): map[]", brokenToken.Error()[0:38])
 
 	r, _ = http.NewRequest("", "/", nil)
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", "random"+defaultToken)
 	r.URL.Path = "/username/"
-	assert.Error(t, a.Authenticate(r))
-	brokenToken2 := a.Authenticate(r)
+	_, err = a.Authenticate(r)
+	assert.Error(t, err)
+	_, brokenToken2 := a.Authenticate(r)
 	assert.Equal(t, "broken token (claims are empty): map[]", brokenToken2.Error()[0:38])
 
 	// Delete the keys when testing is done or failed
@@ -245,12 +250,13 @@ func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
 	// Test that a user can access their own bucket
 	r.URL.Path = "/dummy/"
 	s3signer.SignV4(*r, "username", "testpass", "", "us-east-1")
-	assert.Nil(t, a.Authenticate(r))
+	_, err = a.Authenticate(r)
+	assert.Nil(t, err)
 
 	// Test that a valid user can't access someone elses bucket
 	r.URL.Path = "/notvalid/"
 	s3signer.SignV4(*r, "username", "testpass", "", "us-east-1")
-	otherBucket := a.Authenticate(r)
+	_, otherBucket := a.Authenticate(r)
 	assert.Equal(t, "token supplied username dummy but URL had notvalid", otherBucket.Error())
 
 	// Create and test Elixir token with wrong username
@@ -261,7 +267,7 @@ func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", wrongUserToken)
 	r.URL.Path = "/username/"
-	wrongUsername := a.Authenticate(r)
+	_, wrongUsername := a.Authenticate(r)
 	assert.Equal(t, "token supplied username c5773f41d17d27bd53b1e6794aedc32d7906e779@elixir-europe.org but URL had username", wrongUsername.Error())
 
 	// Create and test expired Elixir token
@@ -272,7 +278,8 @@ func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", expiredToken)
 	r.URL.Path = "/dummy/"
-	assert.Nil(t, a.Authenticate(r))
+	_, err = a.Authenticate(r)
+	assert.Nil(t, err)
 
 	// Create and test expired Elixir token with wrong username
 	expiredAndWrongUserToken, err := helper.CreateECToken(prKeyParsed, "ES256", "JWT", helper.ExpiredAndWrongUserClaims)
@@ -282,7 +289,7 @@ func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", expiredAndWrongUserToken)
 	r.URL.Path = "/username/"
-	expiredAndWrongUser := a.Authenticate(r)
+	_, expiredAndWrongUser := a.Authenticate(r)
 	assert.Equal(t, "token supplied username c5773f41d17d27bd53b1e6794aedc32d7906e779@elixir-europe.org but URL had username", expiredAndWrongUser.Error())
 
 	// Elixir token is not valid
@@ -293,7 +300,7 @@ func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", nonValidToken)
 	r.URL.Path = "/username/"
-	nonvalidToken := a.Authenticate(r)
+	_, nonvalidToken := a.Authenticate(r)
 	// The error output is huge so a smaller part is compared
 	assert.Equal(t, "signed token (ES256) not valid:", nonvalidToken.Error()[0:31])
 
@@ -302,14 +309,14 @@ func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", defaultToken[3:])
 	r.URL.Path = "/username/"
-	brokenToken := a.Authenticate(r)
+	_, brokenToken := a.Authenticate(r)
 	assert.Equal(t, "broken token (claims are empty): map[]", brokenToken.Error()[0:38])
 
 	r, _ = http.NewRequest("", "/", nil)
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", "random"+defaultToken)
 	r.URL.Path = "/username/"
-	brokenToken2 := a.Authenticate(r)
+	_, brokenToken2 := a.Authenticate(r)
 	assert.Equal(t, "broken token (claims are empty): map[]", brokenToken2.Error()[0:38])
 
 	defer os.RemoveAll(demoKeysPath)
@@ -364,7 +371,7 @@ func TestWrongKeyType_EC(t *testing.T) {
 }
 
 func TestUserTokenAuthenticator_ValidateSignature_HS(t *testing.T) {
-	//Create random secret
+	// Create random secret
 	key := make([]byte, 256)
 	_, err := rand.Read(key)
 	assert.NoError(t, err)
@@ -381,6 +388,6 @@ func TestUserTokenAuthenticator_ValidateSignature_HS(t *testing.T) {
 	r.Host = "localhost"
 	r.Header.Set("X-Amz-Security-Token", wrongAlgToken)
 	r.URL.Path = "/username/"
-	WrongAlg := a.Authenticate(r)
+	_, WrongAlg := a.Authenticate(r)
 	assert.Equal(t, "unsupported algorithm HS256", WrongAlg.Error())
 }

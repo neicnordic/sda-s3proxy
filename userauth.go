@@ -26,7 +26,7 @@ import (
 type Authenticator interface {
 	// Authenticate inspects an http.Request and returns nil if the user is
 	// authenticated, otherwise an error is returned.
-	Authenticate(r *http.Request) error
+	Authenticate(r *http.Request) (jwt.MapClaims, error)
 }
 
 // AlwaysAllow is an Authenticator that always authenticates
@@ -38,8 +38,8 @@ func NewAlwaysAllow() *AlwaysAllow {
 }
 
 // Authenticate authenticates everyone.
-func (u *AlwaysAllow) Authenticate(r *http.Request) error {
-	return nil
+func (u *AlwaysAllow) Authenticate(r *http.Request) (jwt.MapClaims, error) {
+	return nil, nil
 }
 
 // ValidateFromFile is an Authenticator that reads client ids and secret ids
@@ -160,75 +160,76 @@ func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 
 // Authenticate verifies that the token included in the http.Request
 // is valid
-func (u *ValidateFromToken) Authenticate(r *http.Request) error {
+func (u *ValidateFromToken) Authenticate(r *http.Request) (claims jwt.MapClaims, err error) {
+	var ok bool
+
 	// Verify signature by parsing the token with the given key
 	tokenStr := r.Header.Get("X-Amz-Security-Token")
 	if tokenStr == "" {
-		return fmt.Errorf("no access token supplied")
+		return nil, fmt.Errorf("no access token supplied")
 	}
 
 	token, err := jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return nil, nil })
 	// Return error if token is broken (without claims)
-	if claims, ok := token.Claims.(jwt.MapClaims); !ok {
-		return fmt.Errorf("broken token (claims are empty): %v\nerror: %s", claims, err)
+	if claims, ok = token.Claims.(jwt.MapClaims); !ok {
+		return nil, fmt.Errorf("broken token (claims are empty): %v\nerror: %s", claims, err)
 	}
+
+	strIss := fmt.Sprintf("%v", claims["iss"])
+	// Poor string unescaper for elixir
+	strIss = strings.ReplaceAll(strIss, "\\", "")
+
+	log.Debugf("Looking for key for %s", strIss)
+
+	re := regexp.MustCompile(`//([^/]*)`)
 	//nolint:nestif
-	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		strIss := fmt.Sprintf("%v", claims["iss"])
-		// Poor string unescaper for elixir
-		strIss = strings.ReplaceAll(strIss, "\\", "")
-
-		log.Debugf("Looking for key for %s", strIss)
-
-		re := regexp.MustCompile(`//([^/]*)`)
-		if token.Header["alg"] == "ES256" {
-			key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
-			if err != nil {
-				return fmt.Errorf("failed to parse EC public key (%v)", err)
-			}
-			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
-			// Validate the error
-			v, _ := err.(*jwt.ValidationError)
-			// If error is for expired token continue
-			if err != nil && v.Errors != jwt.ValidationErrorExpired {
-				return fmt.Errorf("signed token (ES256) not valid: %v, (token was %s)", err, tokenStr)
-			}
-		} else if token.Header["alg"] == "RS256" {
-			key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
-			if err != nil {
-				return fmt.Errorf("failed to parse RSA256 public key (%v)", err)
-			}
-			_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
-			// Validate the error
-			v, _ := err.(*jwt.ValidationError)
-			// If error is for expired token continue
-			if err != nil && v.Errors != jwt.ValidationErrorExpired {
-				return fmt.Errorf("signed token (RS256) not valid: %v, (token was %s)", err, tokenStr)
-			}
-		} else {
-			return fmt.Errorf("unsupported algorithm %s", token.Header["alg"])
+	if token.Header["alg"] == "ES256" {
+		key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse EC public key (%v)", err)
 		}
+		_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
+		// Validate the error
+		v, _ := err.(*jwt.ValidationError)
+		// If error is for expired token continue
+		if err != nil && v.Errors != jwt.ValidationErrorExpired {
+			return nil, fmt.Errorf("signed token (ES256) not valid: %v, (token was %s)", err, tokenStr)
+		}
+	} else if token.Header["alg"] == "RS256" {
+		key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse RSA256 public key (%v)", err)
+		}
+		_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
+		// Validate the error
+		v, _ := err.(*jwt.ValidationError)
+		// If error is for expired token continue
+		if err != nil && v.Errors != jwt.ValidationErrorExpired {
+			return nil, fmt.Errorf("signed token (RS256) not valid: %v, (token was %s)", err, tokenStr)
+		}
+	} else {
+		return nil, fmt.Errorf("unsupported algorithm %s", token.Header["alg"])
 	}
+
 	// Check whether token username and filepath match
-	re := regexp.MustCompile("/([^/]+)/")
+	re = regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 	//nolint:nestif
-	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		// Case for Elixir usernames - Remove everything after @ character
-		if strings.Contains(fmt.Sprintf("%v", claims["sub"]), "@") {
-			claimString := fmt.Sprintf("%v", claims["sub"])
-			if claimString[:strings.Index(claimString, "@")] != username {
-				return fmt.Errorf("token supplied username %s but URL had %s",
-					claims["sub"], username)
-			}
-		} else {
-			if claims["sub"] != username {
-				return fmt.Errorf("token supplied username %s but URL had %s",
-					claims["sub"], username)
-			}
+	// Case for Elixir usernames - Remove everything after @ character
+	if strings.Contains(fmt.Sprintf("%v", claims["sub"]), "@") {
+		claimString := fmt.Sprintf("%v", claims["sub"])
+		if claimString[:strings.Index(claimString, "@")] != username {
+			return nil, fmt.Errorf("token supplied username %s but URL had %s",
+				claims["sub"], username)
+		}
+	} else {
+		if claims["sub"] != username {
+			return nil, fmt.Errorf("token supplied username %s but URL had %s",
+				claims["sub"], username)
 		}
 	}
-	return nil
+
+	return claims, nil
 }
 
 // Function for reading the ega key in []byte
