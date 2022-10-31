@@ -215,10 +215,10 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) (claims jwt.MapClaims,
 	re = regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
 	//nolint:nestif
-	// Case for Elixir usernames - Remove everything after @ character
+	// Case for Elixir and CEGA usernames: Replace @ with _ character
 	if strings.Contains(fmt.Sprintf("%v", claims["sub"]), "@") {
 		claimString := fmt.Sprintf("%v", claims["sub"])
-		if claimString[:strings.Index(claimString, "@")] != username {
+		if strings.ReplaceAll(claimString, "@", "_") != username {
 			return nil, fmt.Errorf("token supplied username %s but URL had %s",
 				claims["sub"], username)
 		}
