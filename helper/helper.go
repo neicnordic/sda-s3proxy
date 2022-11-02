@@ -122,7 +122,7 @@ func CreateRSAkeys(prPath, pubPath string) error {
 	publickey := &privatekey.PublicKey
 
 	// dump private key to file
-	var privateKeyBytes []byte = x509.MarshalPKCS1PrivateKey(privatekey)
+	privateKeyBytes := x509.MarshalPKCS1PrivateKey(privatekey)
 	privateKeyBlock := &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: privateKeyBytes,
