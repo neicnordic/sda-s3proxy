@@ -25,9 +25,6 @@ jobs:
       - name: install s3cmd
         run: pip3 install s3cmd
 
-      - name: generate certificates
-        run: cd dev_utils && /bin/sh make_certs.sh
-
       - name: Deploy containers
         run: cd dev_utils && GOLANG_VERSION=${{ matrix.go-version }} docker-compose up -d --build
 
