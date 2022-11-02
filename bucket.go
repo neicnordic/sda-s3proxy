@@ -35,7 +35,6 @@ func checkS3Bucket(config S3Config) error {
 	_, err := s3.New(s3Session).CreateBucket(&s3.CreateBucketInput{
 		Bucket: aws.String(config.bucket),
 	})
-	log.Infoln(err)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			if aerr.Code() != s3.ErrCodeBucketAlreadyOwnedByYou &&
