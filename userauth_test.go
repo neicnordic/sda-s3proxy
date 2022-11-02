@@ -24,7 +24,7 @@ func TestUserFileAuthenticator_ReadFile(t *testing.T) {
 
 	assert := assert.New(t)
 
-	r, err := a.secretFromID("elixirid")
+	r, err := a.secretFromID("ElixirID")
 	if assert.Nil(err) {
 		assert.Equal(r, "987654321")
 	}
