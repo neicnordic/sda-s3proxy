@@ -61,6 +61,7 @@ func (h *HealthCheck) httpsGetCheck(url string, timeout time.Duration) healthche
 			return http.ErrUseLastResponse
 		},
 	}
+
 	return func() error {
 		resp, e := client.Get(url)
 		if e != nil {
@@ -70,6 +71,7 @@ func (h *HealthCheck) httpsGetCheck(url string, timeout time.Duration) healthche
 		if resp.StatusCode != 200 {
 			return fmt.Errorf("returned status %d", resp.StatusCode)
 		}
+
 		return nil
 	}
 }

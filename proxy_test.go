@@ -47,6 +47,7 @@ func (f *FakeServer) Close() {
 func (f *FakeServer) PingedAndRestore() bool {
 	ret := f.pinged
 	f.pinged = false
+
 	return ret
 }
 
@@ -60,14 +61,17 @@ func NewMockMessenger() *MockMessenger {
 
 func (m *MockMessenger) SendMessage(event Event) error {
 	m.lastEvent = &event
+
 	return nil
 }
 
 func (m *MockMessenger) CheckAndRestore() bool {
 	if m.lastEvent == nil {
+
 		return false
 	}
 	m.lastEvent = nil
+
 	return true
 }
 

@@ -41,8 +41,10 @@ func checkS3Bucket(config S3Config) error {
 				aerr.Code() != s3.ErrCodeBucketAlreadyExists {
 				return errors.Errorf("Unexpected issue while creating bucket: %v", err)
 			}
+
 			return nil
 		}
+
 		return errors.New("Verifying bucket failed, check S3 configuration")
 	}
 

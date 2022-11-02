@@ -43,8 +43,10 @@ func setupFakeS3() (err error) {
 
 	if err != nil {
 		log.Error("Unexpected error while setting up fake s3")
+
 		return err
 	}
+
 	return err
 }
 

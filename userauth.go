@@ -80,6 +80,7 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 		}
 	} else {
 		log.Debugf("No credentials in Authorization header (%s)", auth)
+
 		return fmt.Errorf("authorization header had no credentials")
 	}
 	//nolint:nestif
@@ -89,6 +90,7 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 
 			signature := re.FindStringSubmatch(auth)
 			if signature == nil || len(signature) < 2 {
+
 				return fmt.Errorf("signature not found in Authorization header (%s)", auth)
 			}
 
@@ -122,8 +124,10 @@ func (u *ValidateFromFile) Authenticate(r *http.Request) error {
 		}
 	} else {
 		log.Debugf("Found no secret for user %s", curAccessKey)
+
 		return fmt.Errorf("no secret for user %s found", curAccessKey)
 	}
+
 	return nil
 }
 
@@ -149,11 +153,13 @@ func (u *ValidateFromFile) secretFromID(id string) (string, error) {
 		}
 		if record[0] == id {
 			log.Debugf("Returning secret for id %s", id)
+
 			return record[1], nil
 		}
 	}
 
 	log.Debugf("No secret found for id %s in %s", id, u.filename)
+
 	return "", fmt.Errorf("cannot find id %s in %s", id, u.filename)
 }
 
@@ -253,11 +259,13 @@ func (u *ValidateFromToken) getjwtkey(jwtpubkeypath string) error {
 
 				u.pubkeys[nameMatch[1]] = keyData
 			}
+
 			return nil
 		})
 	if err != nil {
 		return fmt.Errorf("failed to get public key files (%v)", err)
 	}
+
 	return nil
 }
 
@@ -311,5 +319,6 @@ func (u *ValidateFromToken) getjwtpubkey(jwtpubkeyurl string) error {
 	)
 	u.pubkeys[key] = keyData
 	log.Debugf("Registered public key for %s", key)
+
 	return nil
 }
