@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -242,7 +241,7 @@ func (u *ValidateFromToken) getjwtkey(jwtpubkeypath string) error {
 			}
 			if info.Mode().IsRegular() {
 				log.Debug("Reading file: ", filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
-				keyData, err := ioutil.ReadFile(filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
+				keyData, err := os.ReadFile(filepath.Join(filepath.Clean(jwtpubkeypath), info.Name()))
 				if err != nil {
 					return fmt.Errorf("token file error: %v", err)
 				}
@@ -293,7 +292,7 @@ func (u *ValidateFromToken) getjwtpubkey(jwtpubkeyurl string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get JWK (%v)", err)
 	}
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read key response (%v)", err)
 	}

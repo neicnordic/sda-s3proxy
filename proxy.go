@@ -6,8 +6,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -141,7 +141,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 
 	// Read any remaining data in the connection and
 	// Close so connection can be reused.
-	_, _ = ioutil.ReadAll(s3response.Body)
+	_, _ = io.ReadAll(s3response.Body)
 	_ = s3response.Body.Close()
 }
 
@@ -338,7 +338,7 @@ func (p *Proxy) newSession() (*session.Session, error) {
 	var mySession *session.Session
 	var err error
 	if p.s3.cacert != "" {
-		cert, _ := ioutil.ReadFile(p.s3.cacert)
+		cert, _ := os.ReadFile(p.s3.cacert)
 		cacert := bytes.NewReader(cert)
 		mySession, err = session.NewSessionWithOptions(session.Options{
 			CustomCABundle: cacert,

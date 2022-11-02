@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto/tls"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -47,7 +47,7 @@ func TestHealthchecks(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = ioutil.ReadAll(res.Body)
+	_, err = io.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
 		log.Fatal(err)

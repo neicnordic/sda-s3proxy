@@ -7,7 +7,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -101,7 +100,7 @@ func MakeFolder(path string) (string, string, error) {
 // ParsePrivateRSAKey reads and parses the RSA private key
 func ParsePrivateRSAKey(path, keyName string) (*rsa.PrivateKey, error) {
 	keyPath := path + keyName
-	prKey, err := ioutil.ReadFile(filepath.Clean(keyPath))
+	prKey, err := os.ReadFile(filepath.Clean(keyPath))
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +214,7 @@ func CreateHSToken(key []byte, headerAlg, headerType string, tokenClaims map[str
 // ParsePrivateECKey reads and parses the EC private key
 func ParsePrivateECKey(path, keyName string) (*ecdsa.PrivateKey, error) {
 	keyPath := path + keyName
-	prKey, err := ioutil.ReadFile(filepath.Clean(keyPath))
+	prKey, err := os.ReadFile(filepath.Clean(keyPath))
 	if err != nil {
 		return nil, err
 	}

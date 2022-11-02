@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"reflect"
 	"strings"
@@ -253,7 +253,7 @@ func TLSConfigBroker(c *Config) (*tls.Config, error) {
 			continue
 		}
 
-		cacert, e := ioutil.ReadFile(cacert) // #nosec this file comes from our configuration
+		cacert, e := os.ReadFile(cacert) // #nosec this file comes from our configuration
 		if e != nil {
 			return nil, fmt.Errorf("failed to append %q to RootCAs: %v", cacert, e)
 		}
@@ -268,11 +268,11 @@ func TLSConfigBroker(c *Config) (*tls.Config, error) {
 	}
 
 	if c.Broker.verifyPeer {
-		cert, e := ioutil.ReadFile(c.Broker.clientCert)
+		cert, e := os.ReadFile(c.Broker.clientCert)
 		if e != nil {
 			return nil, fmt.Errorf("failed to read client cert %q, reason: %v", c.Broker.clientKey, e)
 		}
-		key, e := ioutil.ReadFile(c.Broker.clientKey)
+		key, e := os.ReadFile(c.Broker.clientKey)
 		if e != nil {
 			return nil, fmt.Errorf("failed to read client key %q, reason: %v", c.Broker.clientKey, e)
 		}
@@ -302,7 +302,7 @@ func TLSConfigProxy(c *Config) (*tls.Config, error) {
 	cfg.RootCAs = systemCAs
 
 	if c.S3.cacert != "" {
-		cacert, e := ioutil.ReadFile(c.S3.cacert) // #nosec this file comes from our configuration
+		cacert, e := os.ReadFile(c.S3.cacert) // #nosec this file comes from our configuration
 		if e != nil {
 			return nil, fmt.Errorf("failed to append %q to RootCAs: %v", cacert, e)
 		}

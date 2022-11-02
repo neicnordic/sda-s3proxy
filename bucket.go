@@ -3,8 +3,8 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"reflect"
 	"strings"
 
@@ -66,7 +66,7 @@ func transportConfigS3(config S3Config) http.RoundTripper {
 	cfg.RootCAs = systemCAs
 
 	if config.cacert != "" {
-		cacert, e := ioutil.ReadFile(config.cacert) // #nosec this file comes from our config
+		cacert, e := os.ReadFile(config.cacert) // #nosec this file comes from our config
 		if e != nil {
 			log.Fatalf("failed to append %q to RootCAs: %v", cacert, e)
 		}
