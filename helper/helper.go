@@ -85,12 +85,12 @@ func MakeFolder(path string) (string, string, error) {
 	pubKeyPath := path + "/public-key"
 	err := os.MkdirAll(prKeyPath, 0750)
 	if err != nil {
-		//fmt.Errorf("error creating directory: %v", err)
+		// fmt.Errorf("error creating directory: %v", err)
 		return " ", " ", err
 	}
 	err = os.MkdirAll(pubKeyPath, 0750)
 	if err != nil {
-		//fmt.Errorf("error creatin directory: %w", err)
+		// fmt.Errorf("error creatin directory: %w", err)
 		return " ", " ", err
 	}
 
