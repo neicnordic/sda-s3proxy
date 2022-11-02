@@ -6,8 +6,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -92,6 +92,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Debugf("Request not authenticated (%v)", err)
 		p.notAuthorized(w, r)
+
 		return
 	}
 
@@ -105,6 +106,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 		log.Debug("internal server error")
 		log.Debug(err)
 		p.internalServerError(w, r)
+
 		return
 	}
 
@@ -141,7 +143,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 
 	// Read any remaining data in the connection and
 	// Close so connection can be reused.
-	_, _ = ioutil.ReadAll(s3response.Body)
+	_, _ = io.ReadAll(s3response.Body)
 	_ = s3response.Body.Close()
 }
 
@@ -166,11 +168,13 @@ func (p *Proxy) forwardToBackend(r *http.Request) (*http.Response, error) {
 	if err != nil {
 		log.Debug("error when redirecting the request")
 		log.Debug(err)
+
 		return nil, err
 	}
 	nr.Header = r.Header
 	contentLength, _ := strconv.ParseInt(r.Header.Get("content-length"), 10, 64)
 	nr.ContentLength = contentLength
+
 	return p.client.Do(nr)
 }
 
@@ -223,6 +227,7 @@ func (p *Proxy) resignHeader(r *http.Request, accessKey string, secretKey string
 		host := strings.SplitN(backendURL, "//", 2)
 		r.Host = host[1]
 	}
+
 	return s3signer.SignV4(*r, accessKey, secretKey, "", p.s3.region)
 }
 
@@ -233,40 +238,50 @@ func (p *Proxy) detectRequestType(r *http.Request) S3RequestType {
 	case http.MethodGet:
 		if strings.HasSuffix(r.URL.String(), "/") {
 			log.Debug("detect Get")
+
 			return Get
 		} else if strings.Contains(r.URL.String(), "?acl") {
 			log.Debug("detect Policy")
+
 			return Policy
 		} else {
 			log.Debug("detect List")
+
 			return List
 		}
 	case http.MethodDelete:
 		if strings.HasSuffix(r.URL.String(), "/") {
 			log.Debug("detect RemoveBucket")
+
 			return RemoveBucket
 		} else if strings.Contains(r.URL.String(), "uploadId") {
 			log.Debug("detect AbortMultipart")
+
 			return AbortMultipart
 		} else {
 			// Do we allow deletion of files?
 			log.Debug("detect Delete")
+
 			return Delete
 		}
 	case http.MethodPut:
 		if strings.HasSuffix(r.URL.String(), "/") {
 			log.Debug("detect MakeBucket")
+
 			return MakeBucket
 		} else if strings.Contains(r.URL.String(), "?policy") {
 			log.Debug("detect Policy")
+
 			return Policy
 		} else {
 			// Should decide if we will handle copy here or through authentication
 			log.Debug("detect Put")
+
 			return Put
 		}
 	default:
 		log.Debug("detect Other")
+
 		return Other
 	}
 }
@@ -294,6 +309,7 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request, claims jwt.MapClaims) 
 	checksum.Type = "sha256"
 	event.Checksum = []interface{}{checksum}
 	log.Info("user ", event.Username, " with pilot ", claims["pilot"], " uploaded file ", event.Filepath, " with checksum ", checksum.Value, " at ", time.Now())
+
 	return event, nil
 }
 
@@ -327,9 +343,11 @@ func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 			log.Debug("error when listing objects")
 			log.Debug(err)
 		}
+
 		return "", 0, err
 	}
 	fmt.Println(strings.ReplaceAll(*result.Contents[0].ETag, "\"", ""))
+
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(strings.ReplaceAll(*result.Contents[0].ETag, "\"", "")))), *result.Contents[0].Size, nil
 
 }
@@ -338,7 +356,7 @@ func (p *Proxy) newSession() (*session.Session, error) {
 	var mySession *session.Session
 	var err error
 	if p.s3.cacert != "" {
-		cert, _ := ioutil.ReadFile(p.s3.cacert)
+		cert, _ := os.ReadFile(p.s3.cacert)
 		cacert := bytes.NewReader(cert)
 		mySession, err = session.NewSessionWithOptions(session.Options{
 			CustomCABundle: cacert,
@@ -364,5 +382,6 @@ func (p *Proxy) newSession() (*session.Session, error) {
 			return nil, err
 		}
 	}
+
 	return mySession, nil
 }

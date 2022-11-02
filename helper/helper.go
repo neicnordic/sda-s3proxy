@@ -7,7 +7,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -86,12 +85,12 @@ func MakeFolder(path string) (string, string, error) {
 	pubKeyPath := path + "/public-key"
 	err := os.MkdirAll(prKeyPath, 0750)
 	if err != nil {
-		//fmt.Errorf("error creating directory: %v", err)
+		// fmt.Errorf("error creating directory: %v", err)
 		return " ", " ", err
 	}
 	err = os.MkdirAll(pubKeyPath, 0750)
 	if err != nil {
-		//fmt.Errorf("error creatin directory: %w", err)
+		// fmt.Errorf("error creatin directory: %w", err)
 		return " ", " ", err
 	}
 
@@ -101,7 +100,7 @@ func MakeFolder(path string) (string, string, error) {
 // ParsePrivateRSAKey reads and parses the RSA private key
 func ParsePrivateRSAKey(path, keyName string) (*rsa.PrivateKey, error) {
 	keyPath := path + keyName
-	prKey, err := ioutil.ReadFile(filepath.Clean(keyPath))
+	prKey, err := os.ReadFile(filepath.Clean(keyPath))
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +122,7 @@ func CreateRSAkeys(prPath, pubPath string) error {
 	publickey := &privatekey.PublicKey
 
 	// dump private key to file
-	var privateKeyBytes []byte = x509.MarshalPKCS1PrivateKey(privatekey)
+	privateKeyBytes := x509.MarshalPKCS1PrivateKey(privatekey)
 	privateKeyBlock := &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: privateKeyBytes,
@@ -215,7 +214,7 @@ func CreateHSToken(key []byte, headerAlg, headerType string, tokenClaims map[str
 // ParsePrivateECKey reads and parses the EC private key
 func ParsePrivateECKey(path, keyName string) (*ecdsa.PrivateKey, error) {
 	keyPath := path + keyName
-	prKey, err := ioutil.ReadFile(filepath.Clean(keyPath))
+	prKey, err := os.ReadFile(filepath.Clean(keyPath))
 	if err != nil {
 		return nil, err
 	}

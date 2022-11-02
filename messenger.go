@@ -123,6 +123,7 @@ func (m *AMQPMessenger) SendMessage(message Event) error {
 		return fmt.Errorf("failed delivery of delivery tag: %d", confirmed.DeliveryTag)
 	}
 	log.Debugf("confirmed delivery with delivery tag: %d", confirmed.DeliveryTag)
+
 	return nil
 
 }
@@ -135,5 +136,6 @@ func buildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost string, ssl bool) st
 	} else {
 		brokerURI = "amqp://" + mqUser + ":" + mqPassword + "@" + mqHost + ":" + mqPort + mqVhost
 	}
+
 	return brokerURI
 }

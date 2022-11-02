@@ -16,20 +16,20 @@ func main() {
 
 	config, err := NewConfig()
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	tlsBroker, err := TLSConfigBroker(config)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	tlsProxy, err := TLSConfigProxy(config)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 
 	err = checkS3Bucket(config.S3)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 
 	messenger := NewAMQPMessenger(config.Broker, tlsBroker)
