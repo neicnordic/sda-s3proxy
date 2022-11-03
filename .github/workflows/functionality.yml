@@ -17,29 +17,5 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: install s3cmd
-        run: pip3 install s3cmd
-
-      - name: Deploy containers
-        run: cd dev_utils && GOLANG_VERSION=${{ matrix.go-version }} docker-compose up -d --build
-
-      - name: Wait for containers to start
-        run: |
-          RETRY_TIMES=0
-          for p in mq s3
-          do
-          until docker ps -f name=$p --format {{.Status}} | grep "(healthy)"
-          do echo "waiting for $p to become ready"
-          RETRY_TIMES=$((RETRY_TIMES+1));
-          if [ $RETRY_TIMES -eq 30 ]; then exit 1; fi
-          sleep 10;
-          done
-          done
-
-      - name: Run tests
-        run: bash -x .github/integration/tests/tests.sh
+      - name: Run integration tests
+        run: cd dev_utils && GOLANG_VERSION=${{ matrix.go-version }} docker-compose run integration_tests

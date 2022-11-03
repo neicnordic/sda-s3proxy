@@ -12,7 +12,7 @@ function check_output_status() {
 
 cd dev_utils || exit 1
 
-s3cmd -c directS3 put README.md s3://test/some_user/ || exit 1
+s3cmd -c directS3 put README.md s3://test/some_user/ >/dev/null 2>&1 || exit 1
 
 echo "- Testing allowed actions"
 
