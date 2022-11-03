@@ -45,7 +45,7 @@ services:
     volumes:
       - pubcert:/etc/ssl/certs
 
-  mq_server:
+  mq:
     image: rabbitmq:3.11.2-management-alpine
     container_name: mq
     depends_on:
@@ -73,7 +73,7 @@ services:
     image: neicnordic/sda-inbox-s3proxy
     container_name: proxy
     depends_on:
-      mq_server:
+      mq:
         condition: service_healthy
       s3:
         condition: service_healthy
@@ -114,6 +114,29 @@ services:
     ports:
       - "8000:8000"
       - "8001:8001"
+
+  tests:
+    image: golang:${GOLANG_VERSION:-1.18}
+    container_name: s3proxy-tests
+    profiles:
+      - test
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "cd /app; echo 'Running go ${GOLANG_VERSION:-1.18} tests';
+         go install 2>/dev/null
+         && go test -tags live -coverprofile=coverage.txt -covermode=atomic"
+    depends_on:
+      mq:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+      certfixer:
+        condition: service_completed_successfully
+    volumes:
+      - proxy_certs:/certs
+      - ./users.csv:/users.csv
+      - ..:/app
 
 volumes:
   pubcert:

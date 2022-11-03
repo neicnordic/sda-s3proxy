@@ -17,24 +17,8 @@ jobs:
       - name: Check out source code
         uses: actions/checkout@v3
 
-      - name: Deploy containers
-        run: cd dev_utils && docker-compose up -d s3 mq_server
-
-      - name: Wait for containers to start
-        run: |
-          RETRY_TIMES=0
-          for p in mq s3
-          do
-          until docker ps -f name=$p --format {{.Status}} | grep "(healthy)"
-          do echo "waiting for $p to become ready"
-          RETRY_TIMES=$((RETRY_TIMES+1));
-          if [ $RETRY_TIMES -eq 30 ]; then exit 1; fi
-          sleep 10;
-          done
-          done
-
-      - name: Calc coverage
-        run: go test -tags live -coverprofile=coverage.txt -covermode=atomic
+      - name: Run test container
+        run: cd dev_utils && GOLANG_VERSION=${{ matrix.go-version }} docker compose run tests
 
       - name: Codecov
         uses: codecov/codecov-action@v3.1.1

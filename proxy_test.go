@@ -95,7 +95,7 @@ func TestServeHTTP_disallowed(t *testing.T) {
 		secretKey: "someSecret",
 		bucket:    "buckbuck",
 		region:    "us-east-1",
-		cacert:    "./dev_utils/certs/ca.crt",
+		cacert:    "/certs/ca.crt",
 	}
 	messenger := NewMockMessenger()
 	proxy := NewProxy(s3conf, &AlwaysDeny{}, messenger, new(tls.Config))
@@ -172,7 +172,7 @@ func TestServeHTTP_S3Unresponsive(t *testing.T) {
 		secretKey: "someSecret",
 		bucket:    "buckbuck",
 		region:    "us-east-1",
-		cacert:    "./dev_utils/certs/ca.crt",
+		cacert:    "/certs/ca.crt",
 	}
 	messenger := NewMockMessenger()
 	proxy := NewProxy(s3conf, &AlwaysAllow{}, messenger, new(tls.Config))
@@ -201,7 +201,7 @@ func TestServeHTTP_allowed(t *testing.T) {
 		secretKey: "someSecret",
 		bucket:    "buckbuck",
 		region:    "us-east-1",
-		cacert:    "./dev_utils/certs/ca.crt",
+		cacert:    "/certs/ca.crt",
 	}
 	messenger := NewMockMessenger()
 	proxy := NewProxy(s3conf, NewAlwaysAllow(), messenger, new(tls.Config))
@@ -308,7 +308,7 @@ func TestMessageFormatting(t *testing.T) {
 		secretKey: "someSecret",
 		bucket:    "buckbuck",
 		region:    "us-east-1",
-		cacert:    "./dev_utils/certs/ca.crt",
+		cacert:    "/certs/ca.crt",
 	}
 	messenger := NewMockMessenger()
 	proxy := NewProxy(s3conf, &AlwaysDeny{}, messenger, new(tls.Config))

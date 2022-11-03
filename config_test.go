@@ -123,7 +123,7 @@ func (suite *TestSuite) TestConfigBroker() {
 func (suite *TestSuite) TestTLSConfigBroker() {
 	viper.Set("broker.serverName", "broker")
 	viper.Set("broker.ssl", true)
-	viper.Set("broker.cacert", "dev_utils/certs/ca.crt")
+	viper.Set("broker.cacert", "/certs/ca.crt")
 	config, err := NewConfig()
 	assert.NotNil(suite.T(), config)
 	assert.NoError(suite.T(), err)
@@ -132,8 +132,8 @@ func (suite *TestSuite) TestTLSConfigBroker() {
 	assert.NoError(suite.T(), err)
 
 	viper.Set("broker.verifyPeer", true)
-	viper.Set("broker.clientCert", "./dev_utils/certs/client.crt")
-	viper.Set("broker.clientKey", "./dev_utils/certs/client.key")
+	viper.Set("broker.clientCert", "/certs/client.crt")
+	viper.Set("broker.clientKey", "/certs/client.key")
 	config, err = NewConfig()
 	assert.NotNil(suite.T(), config)
 	assert.NoError(suite.T(), err)
@@ -141,8 +141,8 @@ func (suite *TestSuite) TestTLSConfigBroker() {
 	assert.NotNil(suite.T(), tlsBroker)
 	assert.NoError(suite.T(), err)
 
-	viper.Set("broker.clientCert", "./dev_utils/certs/client.pem")
-	viper.Set("broker.clientKey", "./dev_utils/certs/client-key.pem")
+	viper.Set("broker.clientCert", "/certs/client.pem")
+	viper.Set("broker.clientKey", "/certs/client-key.pem")
 	config, err = NewConfig()
 	assert.NotNil(suite.T(), config)
 	assert.NoError(suite.T(), err)
@@ -153,7 +153,7 @@ func (suite *TestSuite) TestTLSConfigBroker() {
 }
 
 func (suite *TestSuite) TestTLSConfigProxy() {
-	viper.Set("aws.cacert", "dev_utils/certs/ca.crt")
+	viper.Set("aws.cacert", "/certs/ca.crt")
 	config, err := NewConfig()
 	assert.NotNil(suite.T(), config)
 	assert.NoError(suite.T(), err)
