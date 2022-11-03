@@ -1,5 +1,5 @@
 name: linting check
-on: [push, pull_request]
+on: [push]
 jobs:
 
   lint:
