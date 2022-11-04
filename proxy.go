@@ -289,10 +289,6 @@ func (p *Proxy) detectRequestType(r *http.Request) S3RequestType {
 // CreateMessageFromRequest is a function that can take a http request and
 // figure out the correct rabbitmq message to send from it.
 func (p *Proxy) CreateMessageFromRequest(r *http.Request, claims jwt.MapClaims) (Event, error) {
-	// Extract username for request's url path
-	re := regexp.MustCompile("/[^/]+/([^/]+)/")
-	username := re.FindStringSubmatch(r.URL.Path)[1]
-
 	event := Event{}
 	checksum := Checksum{}
 	var err error
@@ -305,7 +301,7 @@ func (p *Proxy) CreateMessageFromRequest(r *http.Request, claims jwt.MapClaims) 
 	// Case for simple upload
 	event.Operation = "upload"
 	event.Filepath = strings.Replace(r.URL.Path, "/"+p.s3.bucket+"/", "", 1)
-	event.Username = username
+	event.Username = fmt.Sprintf("%v", claims["sub"])
 	checksum.Type = "sha256"
 	event.Checksum = []interface{}{checksum}
 	log.Info("user ", event.Username, " with pilot ", claims["pilot"], " uploaded file ", event.Filepath, " with checksum ", checksum.Value, " at ", time.Now())
