@@ -299,6 +299,9 @@ func TestMessageFormatting(t *testing.T) {
 	r.Header.Set("content-length", "1234")
 	r.Header.Set("x-amz-content-sha256", "checksum")
 
+	claims := jwt.MapClaims{}
+	claims["sub"] = "user@host.domain"
+
 	s3conf := S3Config{
 		url:       "http://localhost:9023",
 		accessKey: "someAccess",
@@ -310,13 +313,13 @@ func TestMessageFormatting(t *testing.T) {
 	messenger := NewMockMessenger()
 	proxy := NewProxy(s3conf, &AlwaysDeny{}, messenger, new(tls.Config))
 	f.resp = "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>test</Name><Prefix>/user/new_file.txt</Prefix><KeyCount>1</KeyCount><MaxKeys>2</MaxKeys><Delimiter></Delimiter><IsTruncated>false</IsTruncated><Contents><Key>/user/new_file.txt</Key><LastModified>2020-03-10T13:20:15.000Z</LastModified><ETag>&#34;0a44282bd39178db9680f24813c41aec-1&#34;</ETag><Size>1234</Size><Owner><ID></ID><DisplayName></DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>"
-	msg, err := proxy.CreateMessageFromRequest(r, nil)
+	msg, err := proxy.CreateMessageFromRequest(r, claims)
 	assert.Nil(t, err)
 	assert.IsType(t, Event{}, msg)
 
 	assert.Equal(t, int64(1234), msg.Filesize)
 	assert.Equal(t, "user/new_file.txt", msg.Filepath)
-	assert.Equal(t, "user", msg.Username)
+	assert.Equal(t, "user@host.domain", msg.Username)
 
 	c, _ := json.Marshal(msg.Checksum[0])
 	checksum := Checksum{}
