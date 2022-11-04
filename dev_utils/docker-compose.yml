@@ -1,8 +1,10 @@
 services:
   certfixer:
-    build:
-      context: ./certfixer
+    image: neicnordic/sda-helm-tests-support:latest
+    command: /bin/sh /certfixer/make_certs.sh
+    user: "0:0"
     volumes:
+      - ./certfixer:/certfixer
       - pubcert:/pubcert
       - s3_certs:/s3_certs
       - mq_certs:/mq_certs

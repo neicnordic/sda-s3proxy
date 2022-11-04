@@ -62,7 +62,7 @@ openssl x509 -req -in "$out_dir/client.csr" -days 1200 -CA "$out_dir/ca.crt" -CA
 
 # fix permissions
 chmod 644 "$out_dir"/*
-chown -R nobody.nobody "$out_dir"/*
+chown -R root:root "$out_dir"/*
 chmod 600 "$out_dir"/*-key.pem
 
 # move certificates to volumes
