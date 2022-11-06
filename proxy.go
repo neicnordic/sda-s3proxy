@@ -150,11 +150,23 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 func (p *Proxy) uploadFinishedSuccessfully(req *http.Request, response *http.Response) bool {
 	if response.StatusCode != 200 {
 		return false
-	} else if req.Method == http.MethodPut && !strings.Contains(req.URL.String(), "partNumber") {
-		return true
-	} else if req.Method == http.MethodPost && strings.Contains(req.URL.String(), "uploadId") {
-		return true
-	} else {
+	}
+
+	switch req.Method {
+	case http.MethodPut:
+		if !strings.Contains(req.URL.String(), "partNumber") {
+			return true
+		}
+
+		return false
+	case http.MethodPost:
+		if strings.Contains(req.URL.String(), "uploadId") {
+			return true
+		}
+
+		return false
+	default:
+
 		return false
 	}
 }
@@ -190,19 +202,25 @@ func (p *Proxy) prependBucketToHostPath(r *http.Request) {
 	log.Debugf("incoming raw: %s", r.URL.RawQuery)
 
 	// Restructure request to query the users folder instead of the general bucket
-	if r.Method == http.MethodGet && strings.Contains(r.URL.String(), "?delimiter") {
-		r.URL.Path = "/" + bucket + "/"
-		if strings.Contains(r.URL.RawQuery, "&prefix") {
-			params := strings.Split(r.URL.RawQuery, "&prefix=")
-			r.URL.RawQuery = params[0] + "&prefix=" + username + "%2F" + params[1]
-		} else {
-			r.URL.RawQuery = r.URL.RawQuery + "&prefix=" + username + "%2F"
+	switch r.Method {
+	case http.MethodGet:
+		if strings.Contains(r.URL.String(), "?delimiter") {
+			r.URL.Path = "/" + bucket + "/"
+			if strings.Contains(r.URL.RawQuery, "&prefix") {
+				params := strings.Split(r.URL.RawQuery, "&prefix=")
+				r.URL.RawQuery = params[0] + "&prefix=" + username + "%2F" + params[1]
+			} else {
+				r.URL.RawQuery = r.URL.RawQuery + "&prefix=" + username + "%2F"
+			}
+			log.Debug("new Raw Query: ", r.URL.RawQuery)
+		} else if strings.Contains(r.URL.String(), "?location") || strings.Contains(r.URL.String(), "&prefix") {
+			r.URL.Path = "/" + bucket + "/"
+			log.Debug("new Path: ", r.URL.Path)
 		}
-		log.Debug("new Raw Query: ", r.URL.RawQuery)
-	} else if r.Method == http.MethodGet && (strings.Contains(r.URL.String(), "?location") || strings.Contains(r.URL.String(), "&prefix")) {
-		r.URL.Path = "/" + bucket + "/"
+	case http.MethodPost:
+		r.URL.Path = "/" + bucket + r.URL.Path
 		log.Debug("new Path: ", r.URL.Path)
-	} else if r.Method == http.MethodPost || r.Method == http.MethodPut {
+	case http.MethodPut:
 		r.URL.Path = "/" + bucket + r.URL.Path
 		log.Debug("new Path: ", r.URL.Path)
 	}
@@ -236,44 +254,47 @@ func (p *Proxy) resignHeader(r *http.Request, accessKey string, secretKey string
 func (p *Proxy) detectRequestType(r *http.Request) S3RequestType {
 	switch r.Method {
 	case http.MethodGet:
-		if strings.HasSuffix(r.URL.String(), "/") {
+		switch {
+		case strings.HasSuffix(r.URL.String(), "/"):
 			log.Debug("detect Get")
 
 			return Get
-		} else if strings.Contains(r.URL.String(), "?acl") {
+		case strings.Contains(r.URL.String(), "?acl"):
 			log.Debug("detect Policy")
 
 			return Policy
-		} else {
+		default:
 			log.Debug("detect List")
 
 			return List
 		}
 	case http.MethodDelete:
-		if strings.HasSuffix(r.URL.String(), "/") {
+		switch {
+		case strings.HasSuffix(r.URL.String(), "/"):
 			log.Debug("detect RemoveBucket")
 
 			return RemoveBucket
-		} else if strings.Contains(r.URL.String(), "uploadId") {
+		case strings.Contains(r.URL.String(), "uploadId"):
 			log.Debug("detect AbortMultipart")
 
 			return AbortMultipart
-		} else {
+		default:
 			// Do we allow deletion of files?
 			log.Debug("detect Delete")
 
 			return Delete
 		}
 	case http.MethodPut:
-		if strings.HasSuffix(r.URL.String(), "/") {
+		switch {
+		case strings.HasSuffix(r.URL.String(), "/"):
 			log.Debug("detect MakeBucket")
 
 			return MakeBucket
-		} else if strings.Contains(r.URL.String(), "?policy") {
+		case strings.Contains(r.URL.String(), "?policy"):
 			log.Debug("detect Policy")
 
 			return Policy
-		} else {
+		default:
 			// Should decide if we will handle copy here or through authentication
 			log.Debug("detect Put")
 
