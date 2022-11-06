@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -58,13 +59,21 @@ func main() {
 	hc := NewHealthCheck(8001, config.S3, config.Broker, tlsProxy)
 	go hc.RunHealthChecks()
 
+	server := &http.Server{
+		Addr:              ":8000",
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+
 	if config.Server.cert != "" && config.Server.key != "" {
-		if e := http.ListenAndServeTLS(":8000", config.Server.cert, config.Server.key, nil); e != nil {
-			panic(e)
+		if err := server.ListenAndServeTLS(config.Server.cert, config.Server.key); err != nil {
+			panic(err)
 		}
 	} else {
-		if e := http.ListenAndServe(":8000", nil); e != nil {
-			panic(e)
+		if err := server.ListenAndServe(); err != nil {
+			panic(err)
 		}
 	}
 }
