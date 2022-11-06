@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"crypto/x509"
-	"encoding/csv"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -16,7 +14,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/lestrrat/go-jwx/jwk"
-	"github.com/minio/minio-go/v6/pkg/s3signer"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -41,18 +38,6 @@ func (u *AlwaysAllow) Authenticate(r *http.Request) (jwt.MapClaims, error) {
 	return nil, nil
 }
 
-// ValidateFromFile is an Authenticator that reads client ids and secret ids
-// from a file.
-type ValidateFromFile struct {
-	filename string
-}
-
-// NewValidateFromFile returns a new ValidateFromFile, reading users from the
-// supplied file.
-func NewValidateFromFile(filename string) *ValidateFromFile {
-	return &ValidateFromFile{filename}
-}
-
 // ValidateFromToken is an Authenticator that reads the public key from
 // supplied file
 type ValidateFromToken struct {
@@ -63,104 +48,6 @@ type ValidateFromToken struct {
 // the supplied file.
 func NewValidateFromToken(pubkeys map[string][]byte) *ValidateFromToken {
 	return &ValidateFromToken{pubkeys}
-}
-
-// Authenticate checks whether the http.Request is signed by any of the users
-// in the supplied file.
-func (u *ValidateFromFile) Authenticate(r *http.Request) error {
-	re := regexp.MustCompile("Credential=([^/]+)/")
-	auth := r.Header.Get("Authorization")
-	curAccessKey := ""
-	if tmp := re.FindStringSubmatch(auth); tmp != nil {
-		// Check if user requested own bucket
-		curAccessKey = tmp[1]
-		re := regexp.MustCompile("/([^/]+)/")
-		if curAccessKey != re.FindStringSubmatch(r.URL.Path)[1] {
-			return fmt.Errorf("user not authorized to access location")
-		}
-	} else {
-		log.Debugf("No credentials in Authorization header (%s)", auth)
-
-		return fmt.Errorf("authorization header had no credentials")
-	}
-	//nolint:nestif
-	if curSecretKey, err := u.secretFromID(curAccessKey); err == nil {
-		if r.Method == http.MethodGet {
-			re := regexp.MustCompile("Signature=(.*)")
-
-			signature := re.FindStringSubmatch(auth)
-			if signature == nil || len(signature) < 2 {
-
-				return fmt.Errorf("signature not found in Authorization header (%s)", auth)
-			}
-
-			// Create signing request
-			nr, e := http.NewRequest(r.Method, r.URL.String(), r.Body)
-			if e != nil {
-				log.Debug("error creating the new request")
-				log.Debug(e)
-			}
-
-			// Add required headers
-			nr.Header.Set("X-Amz-Date", r.Header.Get("X-Amz-Date"))
-			nr.Header.Set("X-Amz-Content-Sha256", r.Header.Get("X-Amz-Content-Sha256"))
-			nr.Host = r.Host
-			nr.URL.RawQuery = r.URL.RawQuery
-
-			// Sign the new request
-			s3signer.SignV4(*nr, curAccessKey, curSecretKey, "", "us-east-1")
-			curSignature := re.FindStringSubmatch(nr.Header.Get("Authorization"))
-
-			if curSignature == nil || len(signature) < 2 {
-				return fmt.Errorf("generated outgoing signature not found or unexpected (header wass %s)",
-					nr.Header.Get("Authorization"))
-			}
-
-			// Compare signatures
-			if curSignature[1] != signature[1] {
-				return fmt.Errorf("signature for outgoing (%s)request does not match incoming (%s",
-					curSignature[1], signature[1])
-			}
-		}
-	} else {
-		log.Debugf("Found no secret for user %s", curAccessKey)
-
-		return fmt.Errorf("no secret for user %s found", curAccessKey)
-	}
-
-	return nil
-}
-
-func (u *ValidateFromFile) secretFromID(id string) (string, error) {
-	f, e := os.Open(u.filename)
-	if e != nil {
-		log.Panicf("Error opening users file (%s): %v",
-			u.filename,
-			e)
-	}
-
-	defer func() {
-		if err := f.Close(); err != nil {
-			log.Debugf("Error on close: %v", err)
-		}
-	}()
-
-	r := csv.NewReader(bufio.NewReader(f))
-	for {
-		record, e := r.Read()
-		if e == io.EOF {
-			break
-		}
-		if record[0] == id {
-			log.Debugf("Returning secret for id %s", id)
-
-			return record[1], nil
-		}
-	}
-
-	log.Debugf("No secret found for id %s in %s", id, u.filename)
-
-	return "", fmt.Errorf("cannot find id %s in %s", id, u.filename)
 }
 
 // Authenticate verifies that the token included in the http.Request

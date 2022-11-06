@@ -29,7 +29,6 @@ broker:
 server:
   cert: "/certs/proxy.crt"
   key: "/certs/proxy.key"
-  users: "./dev_utils/users.csv"
   jwtpubkeypath: "./dev_utils/keys/"
   jwtpubkeyurl: "https://login.elixir-czech.org/oidc/jwk"
 
