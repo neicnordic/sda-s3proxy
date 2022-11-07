@@ -1,5 +1,4 @@
-ARG GOLANG_VERSION=1.17
-FROM "golang:${GOLANG_VERSION}-alpine"
+FROM "golang:${GOLANG_VERSION:-1.19}-alpine"
 RUN apk add --no-cache git
 COPY . .
 ENV GO111MODULE=on

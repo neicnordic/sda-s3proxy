@@ -13,3 +13,6 @@
 
 # log dumps
 *.dump
+
+# coverage report
+coverage.txt

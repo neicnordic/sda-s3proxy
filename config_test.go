@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/NBISweden/S3-Upload-Proxy/helper"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/viper"
@@ -16,7 +18,12 @@ type TestSuite struct {
 	suite.Suite
 }
 
+var certPath string
+
 func (suite *TestSuite) SetupTest() {
+	certPath, _ = os.MkdirTemp("", "gocerts")
+	helper.MakeCerts(certPath)
+
 	viper.Set("broker.host", "testhost")
 	viper.Set("broker.port", 123)
 	viper.Set("broker.user", "testuser")
@@ -33,6 +40,7 @@ func (suite *TestSuite) SetupTest() {
 
 func (suite *TestSuite) TearDownTest() {
 	viper.Reset()
+	defer os.RemoveAll(certPath)
 }
 
 func TestConfigTestSuite(t *testing.T) {
@@ -123,7 +131,7 @@ func (suite *TestSuite) TestConfigBroker() {
 func (suite *TestSuite) TestTLSConfigBroker() {
 	viper.Set("broker.serverName", "broker")
 	viper.Set("broker.ssl", true)
-	viper.Set("broker.cacert", "dev_utils/certs/ca.crt")
+	viper.Set("broker.cacert", certPath+"/ca.crt")
 	config, err := NewConfig()
 	assert.NotNil(suite.T(), config)
 	assert.NoError(suite.T(), err)
@@ -132,8 +140,8 @@ func (suite *TestSuite) TestTLSConfigBroker() {
 	assert.NoError(suite.T(), err)
 
 	viper.Set("broker.verifyPeer", true)
-	viper.Set("broker.clientCert", "./dev_utils/certs/client.crt")
-	viper.Set("broker.clientKey", "./dev_utils/certs/client.key")
+	viper.Set("broker.clientCert", certPath+"/tls.crt")
+	viper.Set("broker.clientKey", certPath+"/tls.key")
 	config, err = NewConfig()
 	assert.NotNil(suite.T(), config)
 	assert.NoError(suite.T(), err)
@@ -141,19 +149,18 @@ func (suite *TestSuite) TestTLSConfigBroker() {
 	assert.NotNil(suite.T(), tlsBroker)
 	assert.NoError(suite.T(), err)
 
-	viper.Set("broker.clientCert", "./dev_utils/certs/client.pem")
-	viper.Set("broker.clientKey", "./dev_utils/certs/client-key.pem")
+	viper.Set("broker.clientCert", certPath+"tls.crt")
+	viper.Set("broker.clientKey", certPath+"/tls.key")
 	config, err = NewConfig()
 	assert.NotNil(suite.T(), config)
 	assert.NoError(suite.T(), err)
 	tlsBroker, err = TLSConfigBroker(config)
 	assert.Nil(suite.T(), tlsBroker)
 	assert.Error(suite.T(), err)
-
 }
 
 func (suite *TestSuite) TestTLSConfigProxy() {
-	viper.Set("aws.cacert", "dev_utils/certs/ca.crt")
+	viper.Set("aws.cacert", certPath+"/ca.crt")
 	config, err := NewConfig()
 	assert.NotNil(suite.T(), config)
 	assert.NoError(suite.T(), err)
