@@ -44,7 +44,15 @@ func (h *HealthCheck) RunHealthChecks() {
 	health.AddReadinessCheck("broker-tcp", healthcheck.TCPDialCheck(h.brokerURL, 50*time.Millisecond))
 
 	addr := ":" + strconv.Itoa(h.port)
-	if err := http.ListenAndServe(addr, health); err != nil {
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           health,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
 		panic(err)
 	}
 }
