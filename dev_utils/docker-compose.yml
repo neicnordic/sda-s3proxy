@@ -105,13 +105,11 @@ services:
       - BROKER_VERIFYPEER=true
       - SERVER_CERT=/certs/proxy.crt
       - SERVER_KEY=/certs/proxy.key
-      - SERVER_USERS=/users.csv
       - SERVER_JWTPUBKEYPATH=/keys/
       - SERVER_JWTPUBEYURL=https://login.elixir-czech.org/oidc/jwk
       - LOG_FORMAT=json
     volumes:
       - proxy_certs:/certs
-      - ./users.csv:/users.csv
       - ./keys:/keys
     ports:
       - "8000:8000"

@@ -53,7 +53,6 @@ type BrokerConfig struct {
 type ServerConfig struct {
 	cert          string
 	key           string
-	users         string
 	jwtpubkeypath string
 	jwtpubkeyurl  string
 }
@@ -200,13 +199,8 @@ func (c *Config) readConfig() error {
 	// Setup server
 	s := ServerConfig{}
 
-	if !(viper.IsSet("server.users") || viper.IsSet("server.jwtpubkeypath") || viper.IsSet("server.jwtpubkeyurl")) {
-		return errors.New("either server.users or server.pubkey should be present to start the service")
-	}
-
-	// User file authentication
-	if viper.IsSet("server.users") {
-		s.users = viper.GetString("server.users")
+	if !(viper.IsSet("server.jwtpubkeypath") || viper.IsSet("server.jwtpubkeyurl")) {
+		return errors.New("either server.pubkeypath or server.jwtpubkeyurl should be present to start the service")
 	}
 
 	// Token authentication
