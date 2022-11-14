@@ -187,8 +187,8 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) (claims jwt.MapClaims,
 	log.Debugf("Looking for key for %s", strIss)
 
 	re := regexp.MustCompile(`//([^/]*)`)
-	//nolint:nestif
-	if token.Header["alg"] == "ES256" {
+	switch token.Header["alg"] {
+	case "ES256":
 		key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse EC public key (%v)", err)
@@ -200,7 +200,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) (claims jwt.MapClaims,
 		if err != nil && v.Errors != jwt.ValidationErrorExpired {
 			return nil, fmt.Errorf("signed token (ES256) not valid: %v, (token was %s)", err, tokenStr)
 		}
-	} else if token.Header["alg"] == "RS256" {
+	case "RS256":
 		key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse RSA256 public key (%v)", err)
@@ -212,26 +212,21 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) (claims jwt.MapClaims,
 		if err != nil && v.Errors != jwt.ValidationErrorExpired {
 			return nil, fmt.Errorf("signed token (RS256) not valid: %v, (token was %s)", err, tokenStr)
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("unsupported algorithm %s", token.Header["alg"])
 	}
 
 	// Check whether token username and filepath match
 	re = regexp.MustCompile("/([^/]+)/")
 	username := re.FindStringSubmatch(r.URL.Path)[1]
-	//nolint:nestif
 	// Case for Elixir and CEGA usernames: Replace @ with _ character
 	if strings.Contains(fmt.Sprintf("%v", claims["sub"]), "@") {
 		claimString := fmt.Sprintf("%v", claims["sub"])
 		if strings.ReplaceAll(claimString, "@", "_") != username {
-			return nil, fmt.Errorf("token supplied username %s but URL had %s",
-				claims["sub"], username)
+			return nil, fmt.Errorf("token supplied username %s but URL had %s", claims["sub"], username)
 		}
-	} else {
-		if claims["sub"] != username {
-			return nil, fmt.Errorf("token supplied username %s but URL had %s",
-				claims["sub"], username)
-		}
+	} else if claims["sub"] != username {
+		return nil, fmt.Errorf("token supplied username %s but URL had %s", claims["sub"], username)
 	}
 
 	return claims, nil
