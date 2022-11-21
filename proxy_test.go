@@ -12,7 +12,41 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
+
+type ProxyTests struct {
+	suite.Suite
+	S3conf     S3Config
+	fakeServer *FakeServer
+	messenger  *MockMessenger
+}
+
+func TestProxyTestSuite(t *testing.T) {
+	suite.Run(t, new(ProxyTests))
+}
+
+func (suite *ProxyTests) SetupTest() {
+
+	// Create fake server
+	suite.fakeServer = startFakeServer("9024")
+
+	// Create an s3config for the fake server
+	suite.S3conf = S3Config{
+		url:       "http://localhost:9024",
+		accessKey: "someAccess",
+		secretKey: "someSecret",
+		bucket:    "buckbuck",
+		region:    "us-east-1",
+	}
+
+	// Create a mock messenger
+	suite.messenger = NewMockMessenger()
+}
+
+func (suite *ProxyTests) TearDownTest() {
+	suite.fakeServer.Close()
+}
 
 type FakeServer struct {
 	ts     *httptest.Server
@@ -84,20 +118,10 @@ func (u *AlwaysDeny) Authenticate(r *http.Request) (jwt.MapClaims, error) {
 }
 
 // nolint:bodyclose
-func TestServeHTTP_disallowed(t *testing.T) {
-	// Start fake server
-	f := startFakeServer("9023")
-	defer f.Close()
+func (suite *ProxyTests) TestServeHTTP_disallowed() {
 
-	s3conf := S3Config{
-		url:       "http://localhost:9023",
-		accessKey: "someAccess",
-		secretKey: "someSecret",
-		bucket:    "buckbuck",
-		region:    "us-east-1",
-	}
-	messenger := NewMockMessenger()
-	proxy := NewProxy(s3conf, &AlwaysDeny{}, messenger, new(tls.Config))
+	// Start mock messenger that denies everything
+	proxy := NewProxy(suite.S3conf, &AlwaysDeny{}, suite.messenger, new(tls.Config))
 
 	r, _ := http.NewRequest("", "", nil)
 	w := httptest.NewRecorder()
@@ -106,65 +130,65 @@ func TestServeHTTP_disallowed(t *testing.T) {
 	r.Method = "DELETE"
 	r.URL, _ = url.Parse("/asdf/")
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 403, w.Result().StatusCode)
-	assert.Equal(t, false, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 403, w.Result().StatusCode)
+	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Deletion of files are disallowed
 	r.Method = "DELETE"
 	r.URL, _ = url.Parse("/asdf/asdf")
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 403, w.Result().StatusCode)
-	assert.Equal(t, false, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 403, w.Result().StatusCode)
+	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Policy methods are not allowed
 	w = httptest.NewRecorder()
 	r.Method = "GET"
 	r.URL, _ = url.Parse("/asdf?acl=rw")
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 403, w.Result().StatusCode)
-	assert.Equal(t, false, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 403, w.Result().StatusCode)
+	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Normal get is dissallowed
 	w = httptest.NewRecorder()
 	r.Method = "GET"
 	r.URL, _ = url.Parse("/asdf/")
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 403, w.Result().StatusCode)
-	assert.Equal(t, false, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 403, w.Result().StatusCode)
+	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Put policy is disallowed
 	w = httptest.NewRecorder()
 	r.Method = "PUT"
 	r.URL, _ = url.Parse("/asdf?policy=rw")
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 403, w.Result().StatusCode)
-	assert.Equal(t, false, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 403, w.Result().StatusCode)
+	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Create bucket disallowed
 	w = httptest.NewRecorder()
 	r.Method = "PUT"
 	r.URL, _ = url.Parse("/asdf/")
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 403, w.Result().StatusCode)
-	assert.Equal(t, false, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 403, w.Result().StatusCode)
+	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Not authorized user get 401 response
 	w = httptest.NewRecorder()
 	r.Method = "GET"
 	r.URL, _ = url.Parse("/username/file")
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 401, w.Result().StatusCode)
-	assert.Equal(t, false, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 401, w.Result().StatusCode)
+	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 }
 
-func TestServeHTTP_S3Unresponsive(t *testing.T) {
+func (suite *ProxyTests) TestServeHTTPS3Unresponsive() {
 	s3conf := S3Config{
 		url:       "http://localhost:40211",
 		accessKey: "someAccess",
@@ -172,8 +196,7 @@ func TestServeHTTP_S3Unresponsive(t *testing.T) {
 		bucket:    "buckbuck",
 		region:    "us-east-1",
 	}
-	messenger := NewMockMessenger()
-	proxy := NewProxy(s3conf, &AlwaysAllow{}, messenger, new(tls.Config))
+	proxy := NewProxy(s3conf, &AlwaysAllow{}, suite.messenger, new(tls.Config))
 
 	r, _ := http.NewRequest("", "", nil)
 	w := httptest.NewRecorder()
@@ -182,81 +205,70 @@ func TestServeHTTP_S3Unresponsive(t *testing.T) {
 	r.Method = "GET"
 	r.URL, _ = url.Parse("/asdf/asdf")
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 500, w.Result().StatusCode) // nolint:bodyclose
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 500, w.Result().StatusCode) // nolint:bodyclose
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 }
 
 // nolint:bodyclose
-func TestServeHTTP_allowed(t *testing.T) {
-	// Start fake server
-	f := startFakeServer("9024")
-	defer f.Close()
+func (suite *ProxyTests) TestServeHTTP_allowed() {
 
-	// Start proxy
-	s3conf := S3Config{
-		url:       "http://localhost:9024",
-		accessKey: "someAccess",
-		secretKey: "someSecret",
-		bucket:    "buckbuck",
-		region:    "us-east-1",
-	}
-	messenger := NewMockMessenger()
-	proxy := NewProxy(s3conf, NewAlwaysAllow(), messenger, new(tls.Config))
+	// Start proxy that allows everything
+	proxy := NewProxy(suite.S3conf, NewAlwaysAllow(), suite.messenger, new(tls.Config))
 
 	// List files works
 	r, _ := http.NewRequest("GET", "/username/file", nil)
 	w := httptest.NewRecorder()
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 200, w.Result().StatusCode)
-	assert.Equal(t, true, f.PingedAndRestore())
-	assert.Equal(t, false, f.PingedAndRestore()) // Testing the pinged interface
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 200, w.Result().StatusCode)
+	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore()) // Testing the pinged interface
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Put file works
 	w = httptest.NewRecorder()
 	r.Method = "PUT"
-	f.resp = "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>test</Name><Prefix>/elixirid/file.txt</Prefix><KeyCount>1</KeyCount><MaxKeys>2</MaxKeys><Delimiter></Delimiter><IsTruncated>false</IsTruncated><Contents><Key>/elixirid/file.txt</Key><LastModified>2020-03-10T13:20:15.000Z</LastModified><ETag>&#34;0a44282bd39178db9680f24813c41aec-1&#34;</ETag><Size>5</Size><Owner><ID></ID><DisplayName></DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>"
+	suite.fakeServer.resp = "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>test</Name><Prefix>/elixirid/file.txt</Prefix><KeyCount>1</KeyCount><MaxKeys>2</MaxKeys><Delimiter></Delimiter><IsTruncated>false</IsTruncated><Contents><Key>/elixirid/file.txt</Key><LastModified>2020-03-10T13:20:15.000Z</LastModified><ETag>&#34;0a44282bd39178db9680f24813c41aec-1&#34;</ETag><Size>5</Size><Owner><ID></ID><DisplayName></DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>"
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 200, w.Result().StatusCode)
-	assert.Equal(t, true, f.PingedAndRestore())
-	assert.Equal(t, true, messenger.CheckAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 200, w.Result().StatusCode)
+	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), true, suite.messenger.CheckAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Put with partnumber sends no message
 	w = httptest.NewRecorder()
 	r.Method = "PUT"
 	r.URL, _ = url.Parse("/username/file?partNumber=5")
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 200, w.Result().StatusCode)
-	assert.Equal(t, true, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 200, w.Result().StatusCode)
+	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Post with uploadId sends message
 	r.Method = "POST"
 	r.URL, _ = url.Parse("/username/file?uploadId=5")
 	w = httptest.NewRecorder()
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 200, w.Result().StatusCode)
-	assert.Equal(t, true, f.PingedAndRestore())
-	assert.Equal(t, true, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 200, w.Result().StatusCode)
+	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), true, suite.messenger.CheckAndRestore())
 
 	// Post without uploadId sends no message
 	r.Method = "POST"
 	r.URL, _ = url.Parse("/username/file")
 	w = httptest.NewRecorder()
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 200, w.Result().StatusCode)
-	assert.Equal(t, true, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 200, w.Result().StatusCode)
+	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Abort multipart works
 	r.Method = "DELETE"
 	r.URL, _ = url.Parse("/asdf/asdf?uploadId=123")
 	w = httptest.NewRecorder()
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 200, w.Result().StatusCode)
-	assert.Equal(t, true, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 200, w.Result().StatusCode)
+	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Going through the different extra stuff that can be in the get request
 	// that trigger different code paths in the code.
@@ -265,31 +277,30 @@ func TestServeHTTP_allowed(t *testing.T) {
 	r.URL, _ = url.Parse("/username/file?delimiter=puppe")
 	w = httptest.NewRecorder()
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 200, w.Result().StatusCode)
-	assert.Equal(t, true, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 200, w.Result().StatusCode)
+	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Delimiter alone together with prefix
 	r.Method = "GET"
 	r.URL, _ = url.Parse("/username/file?delimiter=puppe&prefix=asdf")
 	w = httptest.NewRecorder()
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 200, w.Result().StatusCode)
-	assert.Equal(t, true, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 200, w.Result().StatusCode)
+	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Location parameter
 	r.Method = "GET"
 	r.URL, _ = url.Parse("/username/file?location=fnuffe")
 	w = httptest.NewRecorder()
 	proxy.ServeHTTP(w, r)
-	assert.Equal(t, 200, w.Result().StatusCode)
-	assert.Equal(t, true, f.PingedAndRestore())
-	assert.Equal(t, false, messenger.CheckAndRestore())
+	assert.Equal(suite.T(), 200, w.Result().StatusCode)
+	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 }
 
-func TestMessageFormatting(t *testing.T) {
-	f := startFakeServer("9023")
+func (suite *ProxyTests) TestMessageFormatting() {
 	// Set up basic request for multipart upload
 	r, _ := http.NewRequest("POST", "/buckbuck/user/new_file.txt", nil)
 	r.Host = "localhost"
@@ -299,34 +310,27 @@ func TestMessageFormatting(t *testing.T) {
 	claims := jwt.MapClaims{}
 	claims["sub"] = "user@host.domain"
 
-	s3conf := S3Config{
-		url:       "http://localhost:9023",
-		accessKey: "someAccess",
-		secretKey: "someSecret",
-		bucket:    "buckbuck",
-		region:    "us-east-1",
-	}
-	messenger := NewMockMessenger()
-	proxy := NewProxy(s3conf, &AlwaysDeny{}, messenger, new(tls.Config))
-	f.resp = "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>test</Name><Prefix>/user/new_file.txt</Prefix><KeyCount>1</KeyCount><MaxKeys>2</MaxKeys><Delimiter></Delimiter><IsTruncated>false</IsTruncated><Contents><Key>/user/new_file.txt</Key><LastModified>2020-03-10T13:20:15.000Z</LastModified><ETag>&#34;0a44282bd39178db9680f24813c41aec-1&#34;</ETag><Size>1234</Size><Owner><ID></ID><DisplayName></DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>"
+	// start proxy that denies everything
+	proxy := NewProxy(suite.S3conf, &AlwaysDeny{}, suite.messenger, new(tls.Config))
+	suite.fakeServer.resp = "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>test</Name><Prefix>/user/new_file.txt</Prefix><KeyCount>1</KeyCount><MaxKeys>2</MaxKeys><Delimiter></Delimiter><IsTruncated>false</IsTruncated><Contents><Key>/user/new_file.txt</Key><LastModified>2020-03-10T13:20:15.000Z</LastModified><ETag>&#34;0a44282bd39178db9680f24813c41aec-1&#34;</ETag><Size>1234</Size><Owner><ID></ID><DisplayName></DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>"
 	msg, err := proxy.CreateMessageFromRequest(r, claims)
-	assert.Nil(t, err)
-	assert.IsType(t, Event{}, msg)
+	assert.Nil(suite.T(), err)
+	assert.IsType(suite.T(), Event{}, msg)
 
-	assert.Equal(t, int64(1234), msg.Filesize)
-	assert.Equal(t, "user/new_file.txt", msg.Filepath)
-	assert.Equal(t, "user@host.domain", msg.Username)
+	assert.Equal(suite.T(), int64(1234), msg.Filesize)
+	assert.Equal(suite.T(), "user/new_file.txt", msg.Filepath)
+	assert.Equal(suite.T(), "user@host.domain", msg.Username)
 
 	c, _ := json.Marshal(msg.Checksum[0])
 	checksum := Checksum{}
 	_ = json.Unmarshal(c, &checksum)
-	assert.Equal(t, "sha256", checksum.Type)
-	assert.Equal(t, "5b233b981dc12e7ccf4c242b99c042b7842b73b956ad662e4fe0f8354151538b", checksum.Value)
+	assert.Equal(suite.T(), "sha256", checksum.Type)
+	assert.Equal(suite.T(), "5b233b981dc12e7ccf4c242b99c042b7842b73b956ad662e4fe0f8354151538b", checksum.Value)
 
 	// Test single shot upload
 	r.Method = "PUT"
 	msg, err = proxy.CreateMessageFromRequest(r, nil)
-	assert.Nil(t, err)
-	assert.IsType(t, Event{}, msg)
-	assert.Equal(t, "upload", msg.Operation)
+	assert.Nil(suite.T(), err)
+	assert.IsType(suite.T(), Event{}, msg)
+	assert.Equal(suite.T(), "upload", msg.Operation)
 }
