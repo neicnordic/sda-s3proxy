@@ -124,6 +124,19 @@ services:
       - "8000:8000"
       - "8001:8001"
 
+  database:
+    container_name: db
+    image: neicnordic/sda-db:v2.0.0
+    environment:
+      - DB_LEGA_IN_PASSWORD=inpass
+      - DB_LEGA_OUT_PASSWORD=outpass
+      - PGVOLUME=/var/lib/postgresql
+      - NOTLS=true
+    volumes:
+      - psqldata:/var/lib/postgresql
+    ports:
+      - 5432:5432
+
   tests:
     image: golang:${GOLANG_VERSION:-1.18}
     container_name: s3proxy-tests
@@ -175,6 +188,7 @@ volumes:
   s3_certs:
   mq_certs:
   proxy_certs:
+  psqldata:
   data:
     # These settings only work on linux (including WSL2), and can be used to
     # test when the disk is full.

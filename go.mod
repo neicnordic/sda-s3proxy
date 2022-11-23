@@ -6,10 +6,11 @@ require (
 	github.com/aws/aws-sdk-go v1.44.153
 	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/google/uuid v1.3.0
-	github.com/heptiolabs/healthcheck v0.0.0-20180807145615-6ff867650f40
-	github.com/johannesboyne/gofakes3 v0.0.0-20210608054100-92d5d4af5fde
+	github.com/heptiolabs/healthcheck v0.0.0-20211123025425-613501dd5deb
+	github.com/johannesboyne/gofakes3 v0.0.0-20220627085814-c3ac35da23b2
 	github.com/lestrrat/go-jwx v0.0.0-20180221005942-b7d4802280ae
 	github.com/minio/minio-go/v6 v6.0.43
+	github.com/neicnordic/sda-common v0.0.3-0.20221114114925-a020b3bce09d
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/viper v1.14.0
@@ -26,6 +27,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/lestrrat/go-pdebug v0.0.0-20180220043741-569c97477ae8 // indirect
+	github.com/lib/pq v1.10.7 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/minio/sha256-simd v0.1.1 // indirect

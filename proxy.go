@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	common "github.com/neicnordic/sda-common/database"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -28,6 +31,7 @@ type Proxy struct {
 	s3        S3Config
 	auth      Authenticator
 	messenger Messenger
+	database  *common.SDAdb
 	client    *http.Client
 }
 
@@ -49,11 +53,11 @@ const (
 )
 
 // NewProxy creates a new S3Proxy. This implements the ServerHTTP interface.
-func NewProxy(s3conf S3Config, auth Authenticator, messenger Messenger, tls *tls.Config) *Proxy {
+func NewProxy(s3conf S3Config, auth Authenticator, messenger Messenger, database *common.SDAdb, tls *tls.Config) *Proxy {
 	tr := &http.Transport{TLSClientConfig: tls}
 	client := &http.Client{Transport: tr}
 
-	return &Proxy{s3conf, auth, messenger, client}
+	return &Proxy{s3conf, auth, messenger, database, client}
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +103,15 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	log.Debug("prepend")
 	p.prependBucketToHostPath(r)
 
+	// register file in database
+	username := fmt.Sprintf("%v", claims["sub"])
+	filepath := strings.Replace(r.URL.Path, "/"+p.s3.bucket+"/", "", 1)
+	fileId, err := p.database.RegisterFile(filepath, username)
+	if err != nil {
+		log.Errorf("failed to register file in database: %v", err)
+		return
+	}
+
 	log.Debug("Forwarding to backend")
 	s3response, err := p.forwardToBackend(r)
 
@@ -110,13 +123,24 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send message to upstream
+	// Send message to upstream and set file as uploaded in the database
 	if p.uploadFinishedSuccessfully(r, s3response) {
 		log.Debug("create message")
 		message, _ := p.CreateMessageFromRequest(r, claims)
 		if err = p.messenger.SendMessage(message); err != nil {
 			log.Debug("error when sending message")
-			log.Debug(err)
+			log.Error(err)
+		}
+
+		jsonMessage, err := json.Marshal(message)
+		if err != nil {
+			log.Errorf("failed to marshal rabbitmq message to json: %v", err)
+			return
+		}
+		log.Debug("marking file as 'uploaded' in database")
+		err = p.database.MarkFileAsUploaded(fileId, username, string(jsonMessage))
+		if err != nil {
+			log.Error(err)
 		}
 	}
 
