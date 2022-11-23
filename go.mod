@@ -10,7 +10,7 @@ require (
 	github.com/johannesboyne/gofakes3 v0.0.0-20220627085814-c3ac35da23b2
 	github.com/lestrrat/go-jwx v0.0.0-20180221005942-b7d4802280ae
 	github.com/minio/minio-go/v6 v6.0.43
-	github.com/neicnordic/sda-common v0.0.3-0.20221114114925-a020b3bce09d
+	github.com/neicnordic/sda-common v0.0.3-0.20221122104056-37b54aea80a7
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/viper v1.14.0
