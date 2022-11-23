@@ -91,6 +91,15 @@ services:
       - AWS_REGION=us-east-1
       - AWS_READYPATH=/minio/health/ready
       - AWS_CACERT=/certs/ca.crt
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=lega_in
+      - DB_PASSWORD=inpass
+      - DB_DATABASE=lega
+      - DB_CACERT=
+      - DB_SSLMODE=disable
+      - DB_CLIENTCERT=
+      - DB_CLIENTKEY=
       - BROKER_HOST=mq
       - BROKER_USER=test
       - BROKER_PASSWORD=test

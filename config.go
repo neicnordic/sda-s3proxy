@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/neicnordic/sda-common/database"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -62,6 +63,7 @@ type Config struct {
 	S3     S3Config
 	Broker BrokerConfig
 	Server ServerConfig
+	DB     database.DBConf
 }
 
 // NewConfig initializes and parses the config file and/or environment using
@@ -195,6 +197,17 @@ func (c *Config) readConfig() error {
 	}
 
 	c.Broker = b
+
+	// Setup psql db
+	c.DB.Host = viper.GetString("db.host")
+	c.DB.Port = viper.GetInt("db.port")
+	c.DB.User = viper.GetString("db.user")
+	c.DB.Password = viper.GetString("db.password")
+	c.DB.Database = viper.GetString("db.database")
+	c.DB.CACert = viper.GetString("db.cacert")
+	c.DB.SslMode = viper.GetString("db.sslmode")
+	c.DB.ClientCert = viper.GetString("db.clientcert")
+	c.DB.ClientKey = viper.GetString("db.clientkey")
 
 	// Setup server
 	s := ServerConfig{}
