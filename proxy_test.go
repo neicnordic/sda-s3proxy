@@ -2,13 +2,18 @@ package main
 
 import (
 	"crypto/tls"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
+
+	common "github.com/neicnordic/sda-common/database"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/stretchr/testify/assert"
@@ -18,8 +23,10 @@ import (
 type ProxyTests struct {
 	suite.Suite
 	S3conf     S3Config
+	DBConf     common.DBConf
 	fakeServer *FakeServer
 	messenger  *MockMessenger
+	database   *common.SDAdb
 }
 
 func TestProxyTestSuite(t *testing.T) {
@@ -42,10 +49,37 @@ func (suite *ProxyTests) SetupTest() {
 
 	// Create a mock messenger
 	suite.messenger = NewMockMessenger()
+
+	// Create a database configuration for the fake database
+	suite.DBConf = common.DBConf{
+		Host:       "localhost",
+		Port:       5432,
+		User:       "lega_in",
+		Password:   "inpass",
+		Database:   "lega",
+		CACert:     "",
+		SslMode:    "disable",
+		ClientCert: "",
+		ClientKey:  "",
+	}
+
+	var err error
+
+	_, err = os.Stat("/.dockerenv")
+	if err == nil {
+		suite.DBConf.Host = "db"
+	}
+
+	// Create a database, but don't care if it can't connect
+	suite.database, err = common.NewSDAdb(suite.DBConf)
+	if err != nil {
+		log.Infof("couldn't connect to database")
+	}
 }
 
 func (suite *ProxyTests) TearDownTest() {
 	suite.fakeServer.Close()
+	suite.database.Close()
 }
 
 type FakeServer struct {
@@ -121,7 +155,7 @@ func (u *AlwaysDeny) Authenticate(r *http.Request) (jwt.MapClaims, error) {
 func (suite *ProxyTests) TestServeHTTP_disallowed() {
 
 	// Start mock messenger that denies everything
-	proxy := NewProxy(suite.S3conf, &AlwaysDeny{}, suite.messenger, new(tls.Config))
+	proxy := NewProxy(suite.S3conf, &AlwaysDeny{}, suite.messenger, suite.database, new(tls.Config))
 
 	r, _ := http.NewRequest("", "", nil)
 	w := httptest.NewRecorder()
@@ -196,7 +230,7 @@ func (suite *ProxyTests) TestServeHTTPS3Unresponsive() {
 		bucket:    "buckbuck",
 		region:    "us-east-1",
 	}
-	proxy := NewProxy(s3conf, &AlwaysAllow{}, suite.messenger, new(tls.Config))
+	proxy := NewProxy(s3conf, &AlwaysAllow{}, suite.messenger, suite.database, new(tls.Config))
 
 	r, _ := http.NewRequest("", "", nil)
 	w := httptest.NewRecorder()
@@ -213,7 +247,7 @@ func (suite *ProxyTests) TestServeHTTPS3Unresponsive() {
 func (suite *ProxyTests) TestServeHTTP_allowed() {
 
 	// Start proxy that allows everything
-	proxy := NewProxy(suite.S3conf, NewAlwaysAllow(), suite.messenger, new(tls.Config))
+	proxy := NewProxy(suite.S3conf, NewAlwaysAllow(), suite.messenger, suite.database, new(tls.Config))
 
 	// List files works
 	r, _ := http.NewRequest("GET", "/username/file", nil)
@@ -311,7 +345,7 @@ func (suite *ProxyTests) TestMessageFormatting() {
 	claims["sub"] = "user@host.domain"
 
 	// start proxy that denies everything
-	proxy := NewProxy(suite.S3conf, &AlwaysDeny{}, suite.messenger, new(tls.Config))
+	proxy := NewProxy(suite.S3conf, &AlwaysDeny{}, suite.messenger, suite.database, new(tls.Config))
 	suite.fakeServer.resp = "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>test</Name><Prefix>/user/new_file.txt</Prefix><KeyCount>1</KeyCount><MaxKeys>2</MaxKeys><Delimiter></Delimiter><IsTruncated>false</IsTruncated><Contents><Key>/user/new_file.txt</Key><LastModified>2020-03-10T13:20:15.000Z</LastModified><ETag>&#34;0a44282bd39178db9680f24813c41aec-1&#34;</ETag><Size>1234</Size><Owner><ID></ID><DisplayName></DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>"
 	msg, err := proxy.CreateMessageFromRequest(r, claims)
 	assert.Nil(suite.T(), err)
@@ -333,4 +367,43 @@ func (suite *ProxyTests) TestMessageFormatting() {
 	assert.Nil(suite.T(), err)
 	assert.IsType(suite.T(), Event{}, msg)
 	assert.Equal(suite.T(), "upload", msg.Operation)
+}
+
+func (suite *ProxyTests) TestDatabaseConnection() {
+
+	// Start proxy that allows everything
+	proxy := NewProxy(suite.S3conf, NewAlwaysAllow(), suite.messenger, suite.database, new(tls.Config))
+
+	// PUT a file into the system
+	filename := "/username/db-test-file"
+	r, _ := http.NewRequest("PUT", filename, nil)
+	w := httptest.NewRecorder()
+	suite.fakeServer.resp = "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>test</Name><Prefix>/elixirid/db-test-file.txt</Prefix><KeyCount>1</KeyCount><MaxKeys>2</MaxKeys><Delimiter></Delimiter><IsTruncated>false</IsTruncated><Contents><Key>/elixirid/file.txt</Key><LastModified>2020-03-10T13:20:15.000Z</LastModified><ETag>&#34;0a44282bd39178db9680f24813c41aec-1&#34;</ETag><Size>5</Size><Owner><ID></ID><DisplayName></DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>"
+	proxy.ServeHTTP(w, r)
+	assert.Equal(suite.T(), 200, w.Result().StatusCode)
+	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
+	assert.Equal(suite.T(), true, suite.messenger.CheckAndRestore())
+	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
+
+	// Check that the file is registered and uploaded in the database
+	// connect to the database
+	db, err := sql.Open(suite.DBConf.PgDataSource())
+	assert.Nil(suite.T(), err, "Failed to connect to database")
+
+	// Check that the file is in the database
+	var fileId string
+	query := "SELECT id FROM sda.files WHERE submission_file_path = $1"
+	err = db.QueryRow(query, filename[1:]).Scan(&fileId)
+	assert.Nil(suite.T(), err, "Failed to query database")
+	assert.NotNil(suite.T(), fileId, "File not found in database")
+
+	// Check that the "registered" status is in the database for this file
+	for _, status := range []string{"registered", "uploaded"} {
+		var exists int
+		query = "SELECT 1 FROM sda.file_event_log WHERE event = $1 AND file_id = $2"
+		err = db.QueryRow(query, status, fileId).Scan(&exists)
+		assert.Nil(suite.T(), err, "Failed to find '%v' event in database", status)
+		assert.Equal(suite.T(), exists, 1, "File '%v' event does not exist", status)
+	}
+
 }
