@@ -153,6 +153,8 @@ services:
         condition: service_healthy
       s3:
         condition: service_healthy
+      database:
+        condition: service_healthy
       certfixer:
         condition: service_completed_successfully
     volumes:
@@ -177,6 +179,8 @@ services:
       s3_proxy:
         condition: service_started
       certfixer:
+        condition: service_completed_successfully
+      createbucket:
         condition: service_completed_successfully
     volumes:
       - proxy_certs:/certs
