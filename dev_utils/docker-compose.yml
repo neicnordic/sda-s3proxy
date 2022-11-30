@@ -79,7 +79,11 @@ services:
         condition: service_healthy
       s3:
         condition: service_healthy
+      database:
+        condition: service_healthy
       certfixer:
+        condition: service_completed_successfully
+      createbucket:
         condition: service_completed_successfully
     restart: always
     environment:

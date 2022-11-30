@@ -70,7 +70,6 @@ func (suite *ProxyTests) SetupTest() {
 		suite.DBConf.Host = "db"
 	}
 
-	// Create a database, but don't care if it can't connect
 	suite.database, err = common.NewSDAdb(suite.DBConf)
 	if err != nil {
 		log.Infof("couldn't connect to database")
