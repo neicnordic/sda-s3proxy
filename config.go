@@ -204,10 +204,18 @@ func (c *Config) readConfig() error {
 	c.DB.User = viper.GetString("db.user")
 	c.DB.Password = viper.GetString("db.password")
 	c.DB.Database = viper.GetString("db.database")
-	c.DB.CACert = viper.GetString("db.cacert")
+	if viper.IsSet("db.cacert") {
+		c.DB.CACert = viper.GetString("db.cacert")
+	}
 	c.DB.SslMode = viper.GetString("db.sslmode")
-	c.DB.ClientCert = viper.GetString("db.clientcert")
-	c.DB.ClientKey = viper.GetString("db.clientkey")
+	if db.SslMode == "verify-full" {
+		// Since verify-full is specified, these are required.
+		if !(viper.IsSet("db.clientCert") && viper.IsSet("db.clientKey")) {
+			return errors.New("when db.sslMode is set to verify-full both db.clientCert and db.clientKey are needed")
+		}
+		c.DB.ClientCert = viper.GetString("db.clientcert")
+		c.DB.ClientKey = viper.GetString("db.clientkey")
+	}
 
 	// Setup server
 	s := ServerConfig{}
