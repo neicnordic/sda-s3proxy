@@ -31,7 +31,7 @@ func main() {
 
 	sdaDB, err := common.NewSDAdb(config.DB)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 
 	defer sdaDB.Close()

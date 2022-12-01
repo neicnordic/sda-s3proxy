@@ -140,7 +140,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 			log.Errorf("failed to marshal rabbitmq message to json: %v", err)
 			return
 		}
-		log.Debug("marking file as 'uploaded' in database")
+		log.Debugf("marking file %v as 'uploaded' in database", fileId)
 		err = p.database.MarkFileAsUploaded(fileId, message.Username, string(jsonMessage))
 		if err != nil {
 			log.Error(err)

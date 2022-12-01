@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	common "github.com/neicnordic/sda-common/database"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/stretchr/testify/assert"
@@ -70,10 +69,7 @@ func (suite *ProxyTests) SetupTest() {
 		suite.DBConf.Host = "db"
 	}
 
-	suite.database, err = common.NewSDAdb(suite.DBConf)
-	if err != nil {
-		log.Infof("couldn't connect to database")
-	}
+	suite.database = &common.SDAdb{}
 }
 
 func (suite *ProxyTests) TearDownTest() {
@@ -246,7 +242,11 @@ func (suite *ProxyTests) TestServeHTTPS3Unresponsive() {
 func (suite *ProxyTests) TestServeHTTP_allowed() {
 
 	// Start proxy that allows everything
-	proxy := NewProxy(suite.S3conf, NewAlwaysAllow(), suite.messenger, suite.database, new(tls.Config))
+	database, err := common.NewSDAdb(suite.DBConf)
+	if err != nil {
+		suite.T().Skip("skip TestShutdown since broker not present")
+	}
+	proxy := NewProxy(suite.S3conf, NewAlwaysAllow(), suite.messenger, database, new(tls.Config))
 
 	// List files works
 	r, _ := http.NewRequest("GET", "/username/file", nil)
@@ -369,9 +369,13 @@ func (suite *ProxyTests) TestMessageFormatting() {
 }
 
 func (suite *ProxyTests) TestDatabaseConnection() {
+	database, err := common.NewSDAdb(suite.DBConf)
+	if err != nil {
+		suite.T().Skip("skip TestShutdown since broker not present")
+	}
 
 	// Start proxy that allows everything
-	proxy := NewProxy(suite.S3conf, NewAlwaysAllow(), suite.messenger, suite.database, new(tls.Config))
+	proxy := NewProxy(suite.S3conf, NewAlwaysAllow(), suite.messenger, database, new(tls.Config))
 
 	// PUT a file into the system
 	filename := "/username/db-test-file"
@@ -379,7 +383,9 @@ func (suite *ProxyTests) TestDatabaseConnection() {
 	w := httptest.NewRecorder()
 	suite.fakeServer.resp = "<ListBucketResult xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>test</Name><Prefix>/elixirid/db-test-file.txt</Prefix><KeyCount>1</KeyCount><MaxKeys>2</MaxKeys><Delimiter></Delimiter><IsTruncated>false</IsTruncated><Contents><Key>/elixirid/file.txt</Key><LastModified>2020-03-10T13:20:15.000Z</LastModified><ETag>&#34;0a44282bd39178db9680f24813c41aec-1&#34;</ETag><Size>5</Size><Owner><ID></ID><DisplayName></DisplayName></Owner><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>"
 	proxy.ServeHTTP(w, r)
-	assert.Equal(suite.T(), 200, w.Result().StatusCode)
+	res := w.Result()
+	defer res.Body.Close()
+	assert.Equal(suite.T(), 200, res.StatusCode)
 	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
 	assert.Equal(suite.T(), true, suite.messenger.CheckAndRestore())
 	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
@@ -390,17 +396,17 @@ func (suite *ProxyTests) TestDatabaseConnection() {
 	assert.Nil(suite.T(), err, "Failed to connect to database")
 
 	// Check that the file is in the database
-	var fileId string
+	var fileID string
 	query := "SELECT id FROM sda.files WHERE submission_file_path = $1"
-	err = db.QueryRow(query, filename[1:]).Scan(&fileId)
+	err = db.QueryRow(query, filename[1:]).Scan(&fileID)
 	assert.Nil(suite.T(), err, "Failed to query database")
-	assert.NotNil(suite.T(), fileId, "File not found in database")
+	assert.NotNil(suite.T(), fileID, "File not found in database")
 
 	// Check that the "registered" status is in the database for this file
 	for _, status := range []string{"registered", "uploaded"} {
 		var exists int
 		query = "SELECT 1 FROM sda.file_event_log WHERE event = $1 AND file_id = $2"
-		err = db.QueryRow(query, status, fileId).Scan(&exists)
+		err = db.QueryRow(query, status, fileID).Scan(&exists)
 		assert.Nil(suite.T(), err, "Failed to find '%v' event in database", status)
 		assert.Equal(suite.T(), exists, 1, "File '%v' event does not exist", status)
 	}
