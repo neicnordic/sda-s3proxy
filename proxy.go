@@ -107,28 +107,13 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	username := fmt.Sprintf("%v", claims["sub"])
 	filepath := strings.Replace(r.URL.Path, "/"+p.s3.bucket+"/", "", 1)
 	// register file in database if it's the start of an upload
-	if p.detectRequestType(r) == Put {
-		// Check if this is part of a multipart upload
-		partNumberParam := r.URL.Query().Get("partNumber")
-		partNumber := 1
-		if partNumberParam != "" {
-			partNumber, err = strconv.Atoi(partNumberParam)
-			if err != nil {
-				log.Errorf("failure parsing part number from %v", partNumberParam)
-				return
-			}
-		}
-
-		// if it's the first part, or not multipart, register file, and add it
-		// to the fileId store
-		if partNumberParam == "" || partNumber == 1 {
-			log.Debugf("registering file %v in the database", filepath)
-			p.fileIds[filepath], err = p.database.RegisterFile(filepath, username)
-			log.Debugf("fileId: %v", p.fileIds[filepath])
-			if err != nil {
-				log.Errorf("failed to register file in database: %v", err)
-				return
-			}
+	if p.detectRequestType(r) == Put && p.fileIds[r.URL.Path] == "" {
+		log.Debugf("registering file %v in the database", r.URL.Path)
+		p.fileIds[r.URL.Path], err = p.database.RegisterFile(filepath, username)
+		log.Debugf("fileId: %v", p.fileIds[r.URL.Path])
+		if err != nil {
+			log.Errorf("failed to register file in database: %v", err)
+			return
 		}
 	}
 
@@ -157,8 +142,8 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 			log.Errorf("failed to marshal rabbitmq message to json: %v", err)
 			return
 		}
-		fileId := p.fileIds[filepath]
-		delete(p.fileIds, filepath)
+		fileId := p.fileIds[r.URL.Path]
+		delete(p.fileIds, r.URL.Path)
 		log.Debugf("marking file %v as 'uploaded' in database", fileId)
 		err = p.database.MarkFileAsUploaded(fileId, username, string(jsonMessage))
 		if err != nil {
