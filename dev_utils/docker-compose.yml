@@ -139,7 +139,7 @@ services:
     volumes:
       - psqldata:/var/lib/postgresql
     ports:
-      - 5432:5432
+      - 2345:5432
 
   tests:
     image: golang:${GOLANG_VERSION:-1.19}
