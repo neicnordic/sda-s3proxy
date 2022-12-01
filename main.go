@@ -36,7 +36,7 @@ func main() {
 
 	defer sdaDB.Close()
 
-	log.Infof("Connected to sda-db (v%v)", sdaDB.Version)
+	log.Debugf("Connected to sda-db (v%v)", sdaDB.Version)
 
 	err = checkS3Bucket(config.S3)
 	if err != nil {
