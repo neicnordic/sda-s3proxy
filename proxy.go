@@ -113,6 +113,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("fileId: %v", p.fileIds[r.URL.Path])
 		if err != nil {
 			log.Errorf("failed to register file in database: %v", err)
+
 			return
 		}
 	}
@@ -140,12 +141,13 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 		jsonMessage, err := json.Marshal(message)
 		if err != nil {
 			log.Errorf("failed to marshal rabbitmq message to json: %v", err)
+
 			return
 		}
-		fileId := p.fileIds[r.URL.Path]
+		fileID := p.fileIds[r.URL.Path]
 		delete(p.fileIds, r.URL.Path)
-		log.Debugf("marking file %v as 'uploaded' in database", fileId)
-		err = p.database.MarkFileAsUploaded(fileId, username, string(jsonMessage))
+		log.Debugf("marking file %v as 'uploaded' in database", fileID)
+		err = p.database.MarkFileAsUploaded(fileID, username, string(jsonMessage))
 		if err != nil {
 			log.Error(err)
 		}
