@@ -54,7 +54,7 @@ func (suite *ProxyTests) SetupTest() {
 		Host:       "localhost",
 		Port:       5432,
 		User:       "lega_in",
-		Password:   "inpass",
+		Password:   "lega_in",
 		Database:   "lega",
 		CACert:     "",
 		SslMode:    "disable",
