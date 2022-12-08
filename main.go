@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	common "github.com/neicnordic/sda-common/database"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -28,6 +29,15 @@ func main() {
 		log.Panic(err)
 	}
 
+	sdaDB, err := common.NewSDAdb(config.DB)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	defer sdaDB.Close()
+
+	log.Debugf("Connected to sda-db (v%v)", sdaDB.Version)
+
 	err = checkS3Bucket(config.S3)
 	if err != nil {
 		log.Panic(err)
@@ -50,7 +60,7 @@ func main() {
 			log.Panicf("Error while getting key %s: %v", config.Server.jwtpubkeypath, err)
 		}
 	}
-	proxy := NewProxy(config.S3, auth, messenger, tlsProxy)
+	proxy := NewProxy(config.S3, auth, messenger, sdaDB, tlsProxy)
 
 	log.Debug("got the proxy ", proxy)
 

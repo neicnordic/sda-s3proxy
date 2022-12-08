@@ -79,7 +79,11 @@ services:
         condition: service_healthy
       s3:
         condition: service_healthy
+      database:
+        condition: service_healthy
       certfixer:
+        condition: service_completed_successfully
+      createbucket:
         condition: service_completed_successfully
     restart: always
     environment:
@@ -91,6 +95,15 @@ services:
       - AWS_REGION=us-east-1
       - AWS_READYPATH=/minio/health/ready
       - AWS_CACERT=/certs/ca.crt
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=lega_in
+      - DB_PASSWORD=lega_in
+      - DB_DATABASE=lega
+      - DB_CACERT=
+      - DB_SSLMODE=disable
+      - DB_CLIENTCERT=
+      - DB_CLIENTKEY=
       - BROKER_HOST=mq
       - BROKER_USER=test
       - BROKER_PASSWORD=test
@@ -115,21 +128,36 @@ services:
       - "8000:8000"
       - "8001:8001"
 
+  database:
+    container_name: db
+    image: neicnordic/sda-db:v2.0.0
+    environment:
+      - DB_LEGA_IN_PASSWORD=lega_in
+      - DB_LEGA_OUT_PASSWORD=lega_out
+      - PGVOLUME=/var/lib/postgresql
+      - NOTLS=true
+    volumes:
+      - psqldata:/var/lib/postgresql
+    ports:
+      - 2345:5432
+
   tests:
-    image: golang:${GOLANG_VERSION:-1.18}
+    image: golang:${GOLANG_VERSION:-1.19}
     container_name: s3proxy-tests
     profiles:
       - test
     command:
       - "/bin/sh"
       - "-c"
-      - "cd /app; echo 'Running go ${GOLANG_VERSION:-1.18} tests';
+      - "cd /app; echo 'Running go ${GOLANG_VERSION:-1.19} tests';
          go install 2>/dev/null
-         && go test . -v -coverprofile=coverage.txt -covermode=atomic"
+         && go test ./... -v -coverprofile=coverage.txt -covermode=atomic"
     depends_on:
       mq:
         condition: service_healthy
       s3:
+        condition: service_healthy
+      database:
         condition: service_healthy
       certfixer:
         condition: service_completed_successfully
@@ -156,6 +184,8 @@ services:
         condition: service_started
       certfixer:
         condition: service_completed_successfully
+      createbucket:
+        condition: service_completed_successfully
     volumes:
       - proxy_certs:/certs
       - ./users.csv:/users.csv
@@ -166,6 +196,7 @@ volumes:
   s3_certs:
   mq_certs:
   proxy_certs:
+  psqldata:
   data:
     # These settings only work on linux (including WSL2), and can be used to
     # test when the disk is full.
