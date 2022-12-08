@@ -98,7 +98,7 @@ services:
       - DB_HOST=db
       - DB_PORT=5432
       - DB_USER=lega_in
-      - DB_PASSWORD=inpass
+      - DB_PASSWORD=lega_in
       - DB_DATABASE=lega
       - DB_CACERT=
       - DB_SSLMODE=disable
@@ -132,8 +132,8 @@ services:
     container_name: db
     image: neicnordic/sda-db:v2.0.0
     environment:
-      - DB_LEGA_IN_PASSWORD=inpass
-      - DB_LEGA_OUT_PASSWORD=outpass
+      - DB_LEGA_IN_PASSWORD=lega_in
+      - DB_LEGA_OUT_PASSWORD=lega_out
       - PGVOLUME=/var/lib/postgresql
       - NOTLS=true
     volumes:
