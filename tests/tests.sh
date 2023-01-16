@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ $UID -eq 0 ]; then
+        apt-get -qq update && apt-get -qq install -y jq xxd
+fi
+
 # Function checking that a file was uploaded to the S3 backend
 function check_output_status() {
     if [[ $1 -eq 0 ]]; then
@@ -11,6 +15,9 @@ function check_output_status() {
 }
 
 cd dev_utils || exit 1
+
+token="$(bash keys/sign_jwt.sh ES256 /keys/jwt.key)"
+sed -i "s/TOKEN/$token/" proxyS3
 
 s3cmd -c directS3 put README.md s3://test/some_user/ >/dev/null 2>&1 || exit 1
 
