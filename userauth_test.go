@@ -104,7 +104,7 @@ func TestUserTokenAuthenticator_ValidateSignature_RSA(t *testing.T) {
 	r.Header.Set("X-Amz-Security-Token", expiredToken)
 	r.URL.Path = "/dummy/"
 	_, err = a.Authenticate(r)
-	assert.Nil(t, err)
+	assert.Error(t, err)
 
 	// Create and test expired Elixir token with wrong username
 	expiredAndWrongUserToken, err := helper.CreateRSAToken(prKeyParsed, "RS256", "JWT", helper.ExpiredAndWrongUserClaims)
@@ -211,7 +211,7 @@ func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
 	r.Header.Set("X-Amz-Security-Token", expiredToken)
 	r.URL.Path = "/dummy/"
 	_, err = a.Authenticate(r)
-	assert.Nil(t, err)
+	assert.Error(t, err)
 
 	// Create and test expired Elixir token with wrong username
 	expiredAndWrongUserToken, err := helper.CreateECToken(prKeyParsed, "ES256", "JWT", helper.ExpiredAndWrongUserClaims)

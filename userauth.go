@@ -81,10 +81,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) (claims jwt.MapClaims,
 			return nil, fmt.Errorf("failed to parse EC public key (%v)", err)
 		}
 		_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
-		// Validate the error
-		v, _ := err.(*jwt.ValidationError)
-		// If error is for expired token continue
-		if err != nil && v.Errors != jwt.ValidationErrorExpired {
+		if err != nil {
 			return nil, fmt.Errorf("signed token (ES256) not valid: %v, (token was %s)", err, tokenStr)
 		}
 	case "RS256":
@@ -93,10 +90,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) (claims jwt.MapClaims,
 			return nil, fmt.Errorf("failed to parse RSA256 public key (%v)", err)
 		}
 		_, err = jwt.Parse(tokenStr, func(tokenStr *jwt.Token) (interface{}, error) { return key, nil })
-		// Validate the error
-		v, _ := err.(*jwt.ValidationError)
-		// If error is for expired token continue
-		if err != nil && v.Errors != jwt.ValidationErrorExpired {
+		if err != nil {
 			return nil, fmt.Errorf("signed token (RS256) not valid: %v, (token was %s)", err, tokenStr)
 		}
 	default:
