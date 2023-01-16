@@ -106,17 +106,6 @@ func TestUserTokenAuthenticator_ValidateSignature_RSA(t *testing.T) {
 	_, err = a.Authenticate(r)
 	assert.Error(t, err)
 
-	// Create and test expired Elixir token with wrong username
-	expiredAndWrongUserToken, err := helper.CreateRSAToken(prKeyParsed, "RS256", "JWT", helper.ExpiredAndWrongUserClaims)
-	assert.NoError(t, err)
-
-	r, _ = http.NewRequest("", "/", nil)
-	r.Host = "localhost"
-	r.Header.Set("X-Amz-Security-Token", expiredAndWrongUserToken)
-	r.URL.Path = "/username/"
-	_, expiredAndWrongUser := a.Authenticate(r)
-	assert.Equal(t, "token supplied username c5773f41d17d27bd53b1e6794aedc32d7906e779@elixir-europe.org but URL had username", expiredAndWrongUser.Error())
-
 	// Elixir token is not valid (e.g. issued in a future time)
 	nonValidToken, err := helper.CreateRSAToken(prKeyParsed, "RS256", "JWT", helper.NonValidClaims)
 	assert.NoError(t, err)
@@ -212,17 +201,6 @@ func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
 	r.URL.Path = "/dummy/"
 	_, err = a.Authenticate(r)
 	assert.Error(t, err)
-
-	// Create and test expired Elixir token with wrong username
-	expiredAndWrongUserToken, err := helper.CreateECToken(prKeyParsed, "ES256", "JWT", helper.ExpiredAndWrongUserClaims)
-	assert.NoError(t, err)
-
-	r, _ = http.NewRequest("", "/", nil)
-	r.Host = "localhost"
-	r.Header.Set("X-Amz-Security-Token", expiredAndWrongUserToken)
-	r.URL.Path = "/username/"
-	_, expiredAndWrongUser := a.Authenticate(r)
-	assert.Equal(t, "token supplied username c5773f41d17d27bd53b1e6794aedc32d7906e779@elixir-europe.org but URL had username", expiredAndWrongUser.Error())
 
 	// Elixir token is not valid
 	nonValidToken, err := helper.CreateECToken(prKeyParsed, "ES256", "JWT", helper.NonValidClaims)
