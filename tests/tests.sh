@@ -121,4 +121,12 @@ echo "Trying to change the access logging for a bucket"
 s3cmd -c proxyS3 accesslog s3://dummy/ 2>&1 | grep -q "$nobucket"
 check_output_status "$?"
 
+token="$(bash keys/sign_jwt.sh ES256 /keys/jwt.key yesterday)"
+sed -i "s/^access_token=.*/access_token=$token/" proxyS3
+
+# Test access with expired token
+echo "Test access with expired token"
+s3cmd -c proxyS3 ls s3://dummy/README.md 2>&1 | grep -q "$unauthorized"
+check_output_status "$?"
+
 echo "All tests have passed"

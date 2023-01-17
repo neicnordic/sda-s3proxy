@@ -39,7 +39,7 @@ sign() {
         algo=${1:-RS256}
         algo=${algo^^}
         header=$(build_header "$algo") || return
-        payload=${3:-$test_payload}
+        payload=${4:-$test_payload}
         signed_content="$(json <<<"$header" | b64enc).$(json <<<"$payload" | b64enc)"
         case $algo in
         RS*) sig=$(printf %s "$signed_content" | rs_sign "${algo#RS}" "$secret" | b64enc) ;;
@@ -53,7 +53,7 @@ sign() {
 }
 
 iat=$(date +%s)
-exp=$(date --date=tomorrow +%s)
+exp=$(date --date="${3:-tomorrow}" +%s)
 
 test_payload='{
   "at_hash": "J_fA458SPsXFV6lJQL1l-w",
