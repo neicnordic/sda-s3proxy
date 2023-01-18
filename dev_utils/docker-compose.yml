@@ -9,6 +9,7 @@ services:
       - s3_certs:/s3_certs
       - mq_certs:/mq_certs
       - proxy_certs:/proxy_certs
+      - keys:/keys
 
   s3:
     image: minio/minio:RELEASE.2022-09-25T15-44-53Z
@@ -119,11 +120,10 @@ services:
       - SERVER_CERT=/certs/proxy.crt
       - SERVER_KEY=/certs/proxy.key
       - SERVER_JWTPUBKEYPATH=/keys/
-      - SERVER_JWTPUBEYURL=https://login.elixir-czech.org/oidc/jwk
       - LOG_FORMAT=json
     volumes:
       - proxy_certs:/certs
-      - ./keys:/keys
+      - keys:/keys
     ports:
       - "8000:8000"
       - "8001:8001"
@@ -163,7 +163,6 @@ services:
         condition: service_completed_successfully
     volumes:
       - proxy_certs:/certs
-      - ./users.csv:/users.csv
       - ..:/app
 
   integration_tests:
@@ -188,10 +187,11 @@ services:
         condition: service_completed_successfully
     volumes:
       - proxy_certs:/certs
-      - ./users.csv:/users.csv
       - ..:/app
+      - keys:/keys
 
 volumes:
+  keys:
   pubcert:
   s3_certs:
   mq_certs:

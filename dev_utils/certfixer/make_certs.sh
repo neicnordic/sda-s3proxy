@@ -5,8 +5,7 @@ set -e
 out_dir="/cert_gen"
 
 # install openssl if it's missing
-if [ ! "$(command -v openssl)" ];
-then
+if [ ! "$(command -v openssl)" ]; then
     apk add openssl
 fi
 
@@ -18,24 +17,22 @@ s3_certs="/s3_certs/CAs/public.crt /s3_certs/public.crt /s3_certs/private.key"
 mq_certs="/mq_certs/ca.crt /mq_certs/mq.crt /mq_certs/mq.key"
 pub_cert="/pubcert/public.crt"
 proxy_certs="/proxy_certs/ca.crt /proxy_certs/client.crt /proxy_certs/client.key /proxy_certs/proxy.crt /proxy_certs/proxy.key"
-targets="$s3_certs $mq_certs $pub_cert $proxy_certs"
+keys="/keys/jwt.key /keys/jwt.pub"
+targets="$s3_certs $mq_certs $pub_cert $proxy_certs $keys"
 
 echo ""
 echo "Checking certificates"
 recreate="false"
 # check if certificates exist
-for target in $targets
-do
-    if [ ! -f "$target" ]
-    then
+for target in $targets; do
+    if [ ! -f "$target" ]; then
         recreate="true"
         break
     fi
 done
 
 # only recreate certificates if any certificate is missing
-if [ "$recreate" = "false" ]
-then
+if [ "$recreate" = "false" ]; then
     echo "certificates already exists"
     exit 0
 fi
@@ -60,6 +57,10 @@ openssl x509 -req -in "$out_dir/s3.csr" -days 1200 -CA "$out_dir/ca.crt" -CAkey 
 openssl req -config "$script_dir/ssl.cnf" -new -nodes -newkey rsa:4096 -keyout "$out_dir/client.key" -out "$out_dir/client.csr" -extensions client_cert -subj "/CN=admin"
 openssl x509 -req -in "$out_dir/client.csr" -days 1200 -CA "$out_dir/ca.crt" -CAkey "$out_dir/ca-key.pem" -set_serial 01 -out "$out_dir/client.crt" -extensions client_cert -extfile "$script_dir/ssl.cnf"
 
+# create EC256 key for signing the JWT tokens
+openssl ecparam -genkey -name prime256v1 -noout -out $out_dir/jwt.key
+openssl ec -in $out_dir/jwt.key -outform PEM -pubout >$out_dir/jwt.pub
+
 # fix permissions
 chmod 644 "$out_dir"/*
 chown -R root:root "$out_dir"/*
@@ -82,3 +83,5 @@ cp -p "$out_dir/client.crt" /proxy_certs/client.crt
 cp -p "$out_dir/client.key" /proxy_certs/client.key
 cp -p "$out_dir/proxy.crt" /proxy_certs/proxy.crt
 cp -p "$out_dir/proxy.key" /proxy_certs/proxy.key
+cp -p "$out_dir/jwt.pub" /keys/sda-sda-svc-auth.pub
+cp -p "$out_dir/jwt.key" /keys/jwt.key
