@@ -28,6 +28,7 @@ services:
       certfixer:
         condition: service_completed_successfully
     ports:
+      - "9000:9000"
       - "9001:9001"
     volumes:
       - s3_certs:/root/.minio/certs
