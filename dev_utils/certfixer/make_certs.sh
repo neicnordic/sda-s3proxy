@@ -17,7 +17,7 @@ s3_certs="/s3_certs/CAs/public.crt /s3_certs/public.crt /s3_certs/private.key"
 mq_certs="/mq_certs/ca.crt /mq_certs/mq.crt /mq_certs/mq.key"
 pub_cert="/pubcert/public.crt"
 proxy_certs="/proxy_certs/ca.crt /proxy_certs/client.crt /proxy_certs/client.key /proxy_certs/proxy.crt /proxy_certs/proxy.key"
-keys="/keys/jwt.key /keys/jwt.pub"
+keys="/keys/jwt.key /keys/sda-sda-svc-auth.pub"
 targets="$s3_certs $mq_certs $pub_cert $proxy_certs $keys"
 
 echo ""
