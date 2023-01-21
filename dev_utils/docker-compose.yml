@@ -191,6 +191,31 @@ services:
       - ..:/app
       - keys:/keys
 
+  local:
+    image: python:3.9.15-buster
+    container_name: local-tests
+    profiles:
+      - local
+    command:
+      - "/bin/sh"
+      - "/dev_utils/local.sh"
+    depends_on:
+      mq:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+      s3_proxy:
+        condition: service_started
+      certfixer:
+        condition: service_completed_successfully
+      createbucket:
+        condition: service_completed_successfully
+    volumes:
+      - proxy_certs:/certs
+      - .:/dev_utils
+      - keys:/keys
+      - /tmp:/local_tmp
+
 volumes:
   keys:
   pubcert:
