@@ -15,6 +15,8 @@ s3cmd -c proxyS3 put README.md s3://dummy ## Upload a file using the proxy
 s3cmd -c proxyS3 ls s3://dummy ## List all files of the user using the proxy 
 ```
 
+>Note that the content of the file `proxyS3` will be modified since the the string `TOKEN` will be replaced by the actual token during the local deployment. Make sure not to commit this change.
+
 If the above commands fail, you may also test if the interaction with the s3 server works without the proxy by
 ```bash
 s3cmd -c directS3 ls s3 ## For access without using the proxy
