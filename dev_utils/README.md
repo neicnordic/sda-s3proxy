@@ -1,20 +1,31 @@
 # Dev environment setup recomendations
 
+## Deploy a stack locally
+
+To start the S3Proxy development environment locally with docker compose, run the following command from the directory `dev_utils`
+
+```bash
+docker compose run local
+```
+
+After that, you can use [s3cmd](https://s3tools.org/s3cmd) to manually interact with the s3 server with proxy by 
+
+```bash
+s3cmd -c proxyS3 put README.md s3://dummy ## Upload a file using the proxy
+s3cmd -c proxyS3 ls s3://dummy ## List all files of the user using the proxy 
+```
+
+If the above commands fail, you may also test if the interaction with the s3 server works without the proxy by
+```bash
+s3cmd -c directS3 ls s3 ## For access without using the proxy
+```
+
+## Trace requests to the minio server
 This guide uses the
 [minio client](https://docs.min.io/minio/baremetal/reference/minio-cli/minio-mc.html)
 (mc) for testing.
 
-## minio s3 server
-
-The S3Proxy development environment is run through docker compose, and can be
-started from this directory using:
-
-```bash
-docker compose up
-```
-(use the `-d` flag if you wish to run docker in the background).
-
-Then it's possible to trace all the requests that come to minio by first
+Once the stack is deployed locally with docker compose, it's possible to trace all the requests that come to minio by first
 putting the following in the hosts array of your `~/.mc/config.json` file:
 
 ```json
@@ -27,8 +38,7 @@ putting the following in the hosts array of your `~/.mc/config.json` file:
 }
 ```
 
-and then in one terminal it's possible to see all requests comming to and all
-responses from minio by running
+and then run the following command in a terminal
 
 ```bash
 mc admin trace -v proxydev
@@ -45,16 +55,6 @@ go build main.go
 ./main
 ```
 
-## Test with s3 configuration file
-To test the implementation locally use the `proxyS3` file located
-in the `dev_utils` folder or a file downloaded from the login portal.
-
-## For example use s3tools to interact with the proxy
-
-```bash
-s3cmd -c dev_utils/directS3 ls s3 ## For access without using the proxy
-s3cmd -c dev_utils/proxyS3 ls s3  ## For access with using the proxy
-```
 
 it's of course also possible to use the `mc` command from minio to access
 through the proxy or directly but then you have to configure that in the
