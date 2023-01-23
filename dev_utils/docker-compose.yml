@@ -132,6 +132,9 @@ services:
   database:
     container_name: db
     image: neicnordic/sda-db:v2.0.7
+    depends_on:
+      certfixer:
+        condition: service_completed_successfully
     environment:
       - DB_LEGA_IN_PASSWORD=lega_in
       - DB_LEGA_OUT_PASSWORD=lega_out
