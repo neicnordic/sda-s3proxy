@@ -140,6 +140,11 @@ services:
       - DB_LEGA_OUT_PASSWORD=lega_out
       - PGVOLUME=/var/lib/postgresql
       - NOTLS=true
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "lega_in", "-h", "localhost" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
     volumes:
       - psqldata:/var/lib/postgresql
     ports:
