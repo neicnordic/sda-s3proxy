@@ -71,10 +71,10 @@ func main() {
 
 	server := &http.Server{
 		Addr:              ":8000",
-		ReadTimeout:       5 * time.Second,
-		WriteTimeout:      5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       30 * time.Second,
-		ReadHeaderTimeout: 3 * time.Second,
+		ReadHeaderTimeout: 30 * time.Second,
 	}
 
 	if config.Server.cert != "" && config.Server.key != "" {
