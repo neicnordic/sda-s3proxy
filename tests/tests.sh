@@ -17,7 +17,11 @@ function check_output_status() {
 cd dev_utils || exit 1
 
 token="$(bash keys/sign_jwt.sh ES256 /keys/jwt.key)"
-sed -i "s/TOKEN/$token/" proxyS3
+sed -i "s/^access_token=.*/access_token=$token/" proxyS3
+
+# set correct host for S3 and proxy
+sed -i "s/localhost:9000/s3:9000/g" directS3
+sed -i "s/localhost:8000/s3_proxy:8000/g" proxyS3
 
 s3cmd -c directS3 put README.md s3://test/some_user/ >/dev/null 2>&1 || exit 1
 

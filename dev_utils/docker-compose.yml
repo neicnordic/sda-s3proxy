@@ -28,6 +28,7 @@ services:
       certfixer:
         condition: service_completed_successfully
     ports:
+      - "9000:9000"
       - "9001:9001"
     volumes:
       - s3_certs:/root/.minio/certs
@@ -130,12 +131,20 @@ services:
 
   database:
     container_name: db
-    image: neicnordic/sda-db:v2.0.0
+    image: neicnordic/sda-db:v2.0.7
+    depends_on:
+      certfixer:
+        condition: service_completed_successfully
     environment:
       - DB_LEGA_IN_PASSWORD=lega_in
       - DB_LEGA_OUT_PASSWORD=lega_out
       - PGVOLUME=/var/lib/postgresql
       - NOTLS=true
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "lega_in", "-h", "localhost" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
     volumes:
       - psqldata:/var/lib/postgresql
     ports:
@@ -189,6 +198,31 @@ services:
       - proxy_certs:/certs
       - ..:/app
       - keys:/keys
+
+  local:
+    image: python:3.9.15-buster
+    container_name: local-tests
+    profiles:
+      - local
+    command:
+      - "/bin/sh"
+      - "/dev_utils/local.sh"
+    depends_on:
+      mq:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+      s3_proxy:
+        condition: service_started
+      certfixer:
+        condition: service_completed_successfully
+      createbucket:
+        condition: service_completed_successfully
+    volumes:
+      - proxy_certs:/certs
+      - .:/dev_utils
+      - keys:/keys
+      - /tmp:/local_tmp
 
 volumes:
   keys:
