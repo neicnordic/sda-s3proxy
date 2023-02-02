@@ -74,9 +74,14 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) (claims jwt.MapClaims,
 	log.Debugf("Looking for key for %s", strIss)
 
 	re := regexp.MustCompile(`//([^/]*)`)
+	keyMatch := re.FindStringSubmatch(strIss)
+	if len(keyMatch) < 2 || keyMatch[1] == "" {
+		return nil, fmt.Errorf("failed to get issuer from token iss (%v)", strIss)
+	}
+
 	switch token.Header["alg"] {
 	case "ES256":
-		key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
+		key, err := jwt.ParseECPublicKeyFromPEM(u.pubkeys[keyMatch[1]])
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse EC public key (%v)", err)
 		}
@@ -85,7 +90,7 @@ func (u *ValidateFromToken) Authenticate(r *http.Request) (claims jwt.MapClaims,
 			return nil, fmt.Errorf("signed token (ES256) not valid: %v, (token was %s)", err, tokenStr)
 		}
 	case "RS256":
-		key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[re.FindStringSubmatch(strIss)[1]])
+		key, err := jwt.ParseRSAPublicKeyFromPEM(u.pubkeys[keyMatch[1]])
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse RSA256 public key (%v)", err)
 		}

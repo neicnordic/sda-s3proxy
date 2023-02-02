@@ -135,6 +135,17 @@ func TestUserTokenAuthenticator_ValidateSignature_RSA(t *testing.T) {
 	_, brokenToken2 := a.Authenticate(r)
 	assert.Equal(t, "broken token (claims are empty): map[]", brokenToken2.Error()[0:38])
 
+	// Bad issuer
+	basIss, err := helper.CreateRSAToken(prKeyParsed, "RS256", "JWT", helper.WrongTokenAlgClaims)
+	assert.NoError(t, err)
+
+	r, _ = http.NewRequest("", "/", nil)
+	r.Host = "localhost"
+	r.Header.Set("X-Amz-Security-Token", basIss)
+	r.URL.Path = "/dummy/"
+	_, err = a.Authenticate(r)
+	assert.Contains(t, err.Error(), "failed to get issuer from token")
+
 	// Delete the keys when testing is done or failed
 	defer os.RemoveAll(demoKeysPath)
 }
@@ -229,6 +240,17 @@ func TestUserTokenAuthenticator_ValidateSignature_EC(t *testing.T) {
 	_, brokenToken2 := a.Authenticate(r)
 	assert.Equal(t, "broken token (claims are empty): map[]", brokenToken2.Error()[0:38])
 
+	// Bad issuer
+	basIss, err := helper.CreateECToken(prKeyParsed, "ES256", "JWT", helper.WrongTokenAlgClaims)
+	assert.NoError(t, err)
+
+	r, _ = http.NewRequest("", "/", nil)
+	r.Host = "localhost"
+	r.Header.Set("X-Amz-Security-Token", basIss)
+	r.URL.Path = "/dummy/"
+	_, err = a.Authenticate(r)
+	assert.Contains(t, err.Error(), "failed to get issuer from token")
+
 	defer os.RemoveAll(demoKeysPath)
 }
 
@@ -287,7 +309,7 @@ func TestUserTokenAuthenticator_ValidateSignature_HS(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create HS256 token
-	wrongAlgToken, err := helper.CreateHSToken(key, "HS256", "JWT", helper.WrongTokenAlgClaims)
+	wrongAlgToken, err := helper.CreateHSToken(key, "HS256", "JWT", helper.DefaultTokenClaims)
 	assert.NoError(t, err)
 
 	testPub := make(map[string][]byte)
