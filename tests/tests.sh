@@ -19,7 +19,7 @@ cd dev_utils || exit 1
 token="$(bash keys/sign_jwt.sh ES256 /keys/jwt.key)"
 sed -i "s/^access_token=.*/access_token=$token/" proxyS3
 
-# set correct hostanles for S3 and proxy
+# set correct host for S3 and proxy
 sed -i "s/localhost:9000/s3:9000/g" directS3
 sed -i "s/localhost:8000/s3_proxy:8000/g" proxyS3
 
