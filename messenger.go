@@ -122,7 +122,7 @@ func (m *AMQPMessenger) SendMessage(message Event) error {
 	if !confirmed.Ack {
 		return fmt.Errorf("failed delivery of delivery tag: %d", confirmed.DeliveryTag)
 	}
-	log.Debugf("confirmed delivery with delivery tag: %d", confirmed.DeliveryTag)
+	log.Debugf("Delivered message: %v, with correlation-ID: %v", string(body), corrID.String())
 
 	return nil
 
