@@ -2,6 +2,9 @@ package main
 
 import (
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	common "github.com/neicnordic/sda-common/database"
@@ -12,6 +15,9 @@ import (
 var Conf *Config
 
 func main() {
+	sigc := make(chan os.Signal, 5)
+	signal.Notify(sigc, os.Interrupt, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
 	// Create a function to handle panic and exit gracefully
 	defer func() {
 		if err := recover(); err != nil {
@@ -21,41 +27,57 @@ func main() {
 
 	c, err := NewConfig()
 	if err != nil {
-		log.Panic(err)
+		log.Error(err)
+		sigc <- syscall.SIGINT
+		panic(err)
 	}
 	Conf = c
 
 	tlsBroker, err := TLSConfigBroker(Conf)
 	if err != nil {
-		log.Panic(err)
+		log.Error(err)
+		sigc <- syscall.SIGINT
+		panic(err)
 	}
 	tlsProxy, err := TLSConfigProxy(Conf)
 	if err != nil {
-		log.Panic(err)
+		log.Error(err)
+		sigc <- syscall.SIGINT
+		panic(err)
 	}
 
 	sdaDB, err := common.NewSDAdb(Conf.DB)
 	if err != nil {
-		log.Panic(err)
+		log.Error(err)
+		sigc <- syscall.SIGINT
+		panic(err)
 	}
-
-	defer sdaDB.Close()
 
 	log.Debugf("Connected to sda-db (v%v)", sdaDB.Version)
 
 	err = checkS3Bucket(Conf.S3)
 	if err != nil {
-		log.Panic(err)
+		log.Error(err)
+		sigc <- syscall.SIGINT
+		panic(err)
 	}
 
 	messenger, err := NewAMQPMessenger(Conf.Broker, tlsBroker)
 	if err != nil {
-		log.Panic(err)
+		log.Error(err)
+		sigc <- syscall.SIGINT
+		panic(err)
 	}
-	defer messenger.channel.Close()
-	defer messenger.connection.Close()
+
 	log.Debug("messenger acquired ", messenger)
 
+	go func() {
+		<-sigc
+		sdaDB.Close()
+		messenger.channel.Close()
+		messenger.connection.Close()
+		os.Exit(1)
+	}()
 	var pubkeys map[string][]byte
 	auth := NewValidateFromToken(pubkeys)
 	auth.pubkeys = make(map[string][]byte)
