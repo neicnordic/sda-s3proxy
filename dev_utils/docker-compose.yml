@@ -131,7 +131,7 @@ services:
 
   database:
     container_name: db
-    image: neicnordic/sda-db:v2.0.7
+    image: ghcr.io/neicnordic/sda-db:v2.0.11
     depends_on:
       certfixer:
         condition: service_completed_successfully
