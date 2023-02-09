@@ -52,6 +52,11 @@ func main() {
 		sigc <- syscall.SIGINT
 		panic(err)
 	}
+	if sdaDB.Version < 4 {
+		log.Error("database schema v4 is required")
+		sigc <- syscall.SIGINT
+		panic(err)
+	}
 
 	log.Debugf("Connected to sda-db (v%v)", sdaDB.Version)
 
