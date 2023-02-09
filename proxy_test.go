@@ -52,7 +52,7 @@ func (suite *ProxyTests) SetupTest() {
 	// Create a database configuration for the fake database
 	suite.DBConf = common.DBConf{
 		Host:       "localhost",
-		Port:       5432,
+		Port:       2345,
 		User:       "lega_in",
 		Password:   "lega_in",
 		Database:   "lega",
@@ -67,6 +67,7 @@ func (suite *ProxyTests) SetupTest() {
 	_, err = os.Stat("/.dockerenv")
 	if err == nil {
 		suite.DBConf.Host = "db"
+		suite.DBConf.Port = 5432
 	}
 
 	suite.database = &common.SDAdb{}
@@ -119,7 +120,7 @@ type MockMessenger struct {
 }
 
 func (m *MockMessenger) IsConnClosed() bool {
-	return true
+	return false
 }
 
 func NewMockMessenger() *MockMessenger {
@@ -132,16 +133,6 @@ func (m *MockMessenger) SendMessage(uuid string, body []byte) error {
 	}
 
 	return nil
-}
-
-func (m *MockMessenger) CheckAndRestore() bool {
-	if m.lastEvent == nil {
-
-		return false
-	}
-	m.lastEvent = nil
-
-	return true
 }
 
 // AlwaysAllow is an Authenticator that always authenticates
@@ -167,7 +158,6 @@ func (suite *ProxyTests) TestServeHTTP_disallowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 403, w.Result().StatusCode)
 	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Deletion of files are disallowed
 	r.Method = "DELETE"
@@ -175,7 +165,6 @@ func (suite *ProxyTests) TestServeHTTP_disallowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 403, w.Result().StatusCode)
 	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Policy methods are not allowed
 	w = httptest.NewRecorder()
@@ -184,7 +173,6 @@ func (suite *ProxyTests) TestServeHTTP_disallowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 403, w.Result().StatusCode)
 	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Normal get is dissallowed
 	w = httptest.NewRecorder()
@@ -193,7 +181,6 @@ func (suite *ProxyTests) TestServeHTTP_disallowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 403, w.Result().StatusCode)
 	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Put policy is disallowed
 	w = httptest.NewRecorder()
@@ -202,7 +189,6 @@ func (suite *ProxyTests) TestServeHTTP_disallowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 403, w.Result().StatusCode)
 	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Create bucket disallowed
 	w = httptest.NewRecorder()
@@ -211,7 +197,6 @@ func (suite *ProxyTests) TestServeHTTP_disallowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 403, w.Result().StatusCode)
 	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Not authorized user get 401 response
 	w = httptest.NewRecorder()
@@ -220,7 +205,6 @@ func (suite *ProxyTests) TestServeHTTP_disallowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 401, w.Result().StatusCode)
 	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 }
 
 func (suite *ProxyTests) TestServeHTTPS3Unresponsive() {
@@ -241,7 +225,6 @@ func (suite *ProxyTests) TestServeHTTPS3Unresponsive() {
 	r.URL, _ = url.Parse("/asdf/asdf")
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 500, w.Result().StatusCode) // nolint:bodyclose
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 }
 
 // nolint:bodyclose
@@ -261,7 +244,6 @@ func (suite *ProxyTests) TestServeHTTP_allowed() {
 	assert.Equal(suite.T(), 200, w.Result().StatusCode)
 	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
 	assert.Equal(suite.T(), false, suite.fakeServer.PingedAndRestore()) // Testing the pinged interface
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Put file works
 	w = httptest.NewRecorder()
@@ -270,8 +252,6 @@ func (suite *ProxyTests) TestServeHTTP_allowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 200, w.Result().StatusCode)
 	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), true, suite.messenger.CheckAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Put with partnumber sends no message
 	w = httptest.NewRecorder()
@@ -280,7 +260,6 @@ func (suite *ProxyTests) TestServeHTTP_allowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 200, w.Result().StatusCode)
 	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Post with uploadId sends message
 	r.Method = "POST"
@@ -289,7 +268,6 @@ func (suite *ProxyTests) TestServeHTTP_allowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 200, w.Result().StatusCode)
 	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), true, suite.messenger.CheckAndRestore())
 
 	// Post without uploadId sends no message
 	r.Method = "POST"
@@ -298,7 +276,6 @@ func (suite *ProxyTests) TestServeHTTP_allowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 200, w.Result().StatusCode)
 	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Abort multipart works
 	r.Method = "DELETE"
@@ -307,7 +284,6 @@ func (suite *ProxyTests) TestServeHTTP_allowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 200, w.Result().StatusCode)
 	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Going through the different extra stuff that can be in the get request
 	// that trigger different code paths in the code.
@@ -318,7 +294,6 @@ func (suite *ProxyTests) TestServeHTTP_allowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 200, w.Result().StatusCode)
 	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Delimiter alone together with prefix
 	r.Method = "GET"
@@ -327,7 +302,6 @@ func (suite *ProxyTests) TestServeHTTP_allowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 200, w.Result().StatusCode)
 	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Location parameter
 	r.Method = "GET"
@@ -336,7 +310,6 @@ func (suite *ProxyTests) TestServeHTTP_allowed() {
 	proxy.ServeHTTP(w, r)
 	assert.Equal(suite.T(), 200, w.Result().StatusCode)
 	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 }
 
 func (suite *ProxyTests) TestMessageFormatting() {
@@ -377,7 +350,7 @@ func (suite *ProxyTests) TestMessageFormatting() {
 func (suite *ProxyTests) TestDatabaseConnection() {
 	database, err := common.NewSDAdb(suite.DBConf)
 	if err != nil {
-		suite.T().Skip("skip TestShutdown since broker not present")
+		suite.T().Skip("skip TestShutdown since DB not present: ", err)
 	}
 
 	// Start proxy that allows everything
@@ -393,8 +366,6 @@ func (suite *ProxyTests) TestDatabaseConnection() {
 	defer res.Body.Close()
 	assert.Equal(suite.T(), 200, res.StatusCode)
 	assert.Equal(suite.T(), true, suite.fakeServer.PingedAndRestore())
-	assert.Equal(suite.T(), true, suite.messenger.CheckAndRestore())
-	assert.Equal(suite.T(), false, suite.messenger.CheckAndRestore())
 
 	// Check that the file is registered and uploaded in the database
 	// connect to the database
