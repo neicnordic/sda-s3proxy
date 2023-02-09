@@ -132,24 +132,25 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	if p.uploadFinishedSuccessfully(r, s3response) {
 		log.Debug("create message")
 		message, _ := p.CreateMessageFromRequest(r, claims)
-		if err = p.messenger.SendMessage(message); err != nil {
-			log.Debug("error when sending message")
-			log.Error(err)
-		}
-
 		jsonMessage, err := json.Marshal(message)
 		if err != nil {
 			log.Errorf("failed to marshal rabbitmq message to json: %v", err)
 
 			return
 		}
-		fileID := p.fileIds[r.URL.Path]
-		delete(p.fileIds, r.URL.Path)
-		log.Debugf("marking file %v as 'uploaded' in database", fileID)
-		err = p.database.MarkFileAsUploaded(fileID, username, string(jsonMessage))
+
+		if err = p.messenger.SendMessage(p.fileIds[r.URL.Path], jsonMessage); err != nil {
+			log.Debug("error when sending message")
+			log.Error(err)
+		}
+
+		log.Debugf("marking file %v as 'uploaded' in database", p.fileIds[r.URL.Path])
+		err = p.database.MarkFileAsUploaded(p.fileIds[r.URL.Path], username, string(jsonMessage))
 		if err != nil {
 			log.Error(err)
 		}
+
+		delete(p.fileIds, r.URL.Path)
 	}
 
 	// Writing non-200 to the response before the headers propagate the error

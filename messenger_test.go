@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -52,11 +54,16 @@ func TestSendMessage(t *testing.T) {
 	assert.NoError(t, err)
 	event := Event{}
 	checksum := Checksum{}
+	event.Operation = "TestSendMessage"
 	event.Username = "Dummy"
 	checksum.Type = "md5"
 	checksum.Value = "123456789"
 	event.Checksum = []interface{}{checksum}
 
-	err = messenger.SendMessage(event)
+	jsonMessage, err := json.Marshal(event)
+	assert.NoError(t, err)
+	uuid, _ := uuid.NewRandom()
+	t.Log("uuid: ", uuid)
+	err = messenger.SendMessage(uuid.String(), jsonMessage)
 	assert.NoError(t, err)
 }

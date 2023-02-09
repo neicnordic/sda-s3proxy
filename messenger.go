@@ -3,11 +3,9 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
 )
@@ -29,7 +27,7 @@ type Event struct {
 
 // Messenger is an interface for sending messages for different file events
 type Messenger interface {
-	SendMessage(message Event) error
+	SendMessage(string, []byte) error
 }
 
 // AMQPMessenger is a Messenger that sends messages to a local AMQP broker
@@ -91,14 +89,7 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) (*AMQPMessenger, er
 }
 
 // SendMessage sends message to RabbitMQ if the upload is finished
-func (m *AMQPMessenger) SendMessage(message Event) error {
-
-	body, e := json.Marshal(message)
-	if e != nil {
-		log.Fatalf("%s", e)
-	}
-	corrID, _ := uuid.NewRandom()
-
+func (m *AMQPMessenger) SendMessage(corrID string, body []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	err := m.channel.PublishWithContext(
@@ -112,20 +103,20 @@ func (m *AMQPMessenger) SendMessage(message Event) error {
 			ContentEncoding: "UTF-8",
 			ContentType:     "application/json",
 			DeliveryMode:    amqp.Persistent,
-			CorrelationId:   corrID.String(),
+			CorrelationId:   corrID,
 			Priority:        0, // 0-9
-			Body:            []byte(body),
+			Body:            body,
 		},
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send message because: %v", err)
 	}
 
 	confirmed := <-m.confirmsChan
 	if !confirmed.Ack {
 		return fmt.Errorf("failed delivery of delivery tag: %d", confirmed.DeliveryTag)
 	}
-	log.Debugf("Delivered message: %v, with correlation-ID: %v", string(body), corrID.String())
+	log.Debugf("Delivered message: %v, with correlation-ID: %v", string(body), corrID)
 
 	return nil
 

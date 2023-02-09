@@ -118,12 +118,18 @@ type MockMessenger struct {
 	lastEvent *Event
 }
 
+func (m *MockMessenger) IsConnClosed() bool {
+	return true
+}
+
 func NewMockMessenger() *MockMessenger {
 	return &MockMessenger{nil}
 }
 
-func (m *MockMessenger) SendMessage(event Event) error {
-	m.lastEvent = &event
+func (m *MockMessenger) SendMessage(uuid string, body []byte) error {
+	if uuid == "" || body == nil {
+		return fmt.Errorf("bad message")
+	}
 
 	return nil
 }
