@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
+	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
-	"github.com/streadway/amqp"
 )
 
 // Checksum used in the message
@@ -96,10 +98,12 @@ func (m *AMQPMessenger) SendMessage(message Event) error {
 	if e != nil {
 		log.Fatalf("%s", e)
 	}
-
 	corrID, _ := uuid.NewRandom()
 
-	err := m.channel.Publish(
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	err := m.channel.PublishWithContext(
+		ctx,
 		m.exchange,
 		m.routingKey,
 		false, // mandatory
