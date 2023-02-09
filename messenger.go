@@ -41,9 +41,8 @@ type AMQPMessenger struct {
 	confirmsChan <-chan amqp.Confirmation
 }
 
-// NewAMQPMessenger creates a new messenger that can communicate with a backend
-// amqp server.
-func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
+// NewAMQPMessenger creates a new messenger that can communicate with a backend amqp server.
+func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) (*AMQPMessenger, error) {
 	brokerURI := buildMqURI(c.host, c.port, c.user, c.password, c.vhost, c.ssl)
 
 	var connection *amqp.Connection
@@ -57,12 +56,12 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
 		connection, err = amqp.Dial(brokerURI)
 	}
 	if err != nil {
-		log.Panicf("brokerErrMsg 1: %s", err)
+		return nil, fmt.Errorf("brokerErrMsg 1: %s", err)
 	}
 
 	channel, err = connection.Channel()
 	if err != nil {
-		log.Panicf("brokerErrMsg 2: %s", err)
+		return nil, fmt.Errorf("brokerErrMsg 2: %s", err)
 	}
 
 	log.Debug("enabling publishing confirms.")
@@ -88,7 +87,7 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
 		log.Fatalf("Channel could not be put into confirm mode: %s\n", err)
 	}
 
-	return &AMQPMessenger{connection, channel, c.exchange, c.routingKey, channel.NotifyPublish(confirmsChan)}
+	return &AMQPMessenger{connection, channel, c.exchange, c.routingKey, channel.NotifyPublish(confirmsChan)}, err
 }
 
 // SendMessage sends message to RabbitMQ if the upload is finished

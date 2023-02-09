@@ -28,8 +28,9 @@ func TestNewAMQPMessenger(t *testing.T) {
 	}
 	assert.NotNil(t, tlsConfig)
 	assert.NoError(t, err)
-
-	assert.NotPanics(t, func() { NewAMQPMessenger(config.Broker, tlsConfig) })
+	m, err := NewAMQPMessenger(config.Broker, tlsConfig)
+	assert.NoError(t, err)
+	assert.NotNil(t, m)
 }
 
 func TestSendMessage(t *testing.T) {
@@ -47,8 +48,8 @@ func TestSendMessage(t *testing.T) {
 	assert.NotNil(t, tlsConfig)
 	assert.NoError(t, err)
 
-	messenger := NewAMQPMessenger(config.Broker, tlsConfig)
-
+	messenger, err := NewAMQPMessenger(config.Broker, tlsConfig)
+	assert.NoError(t, err)
 	event := Event{}
 	checksum := Checksum{}
 	event.Username = "Dummy"

@@ -48,7 +48,12 @@ func main() {
 		log.Panic(err)
 	}
 
-	messenger := NewAMQPMessenger(Conf.Broker, tlsBroker)
+	messenger, err := NewAMQPMessenger(Conf.Broker, tlsBroker)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer messenger.channel.Close()
+	defer messenger.connection.Close()
 	log.Debug("messenger acquired ", messenger)
 
 	var pubkeys map[string][]byte
