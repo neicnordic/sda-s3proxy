@@ -90,6 +90,13 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) (*AMQPMessenger, er
 
 // SendMessage sends message to RabbitMQ if the upload is finished
 func (m *AMQPMessenger) SendMessage(corrID string, body []byte) error {
+	if m.channel.IsClosed() {
+		log.Debugln("channel closed, reconnecting")
+		if err := m.createNewChannel(); err != nil {
+			return fmt.Errorf("failed to recreate channel: %v", err)
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	err := m.channel.PublishWithContext(
@@ -132,4 +139,21 @@ func buildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost string, ssl bool) st
 	}
 
 	return brokerURI
+}
+
+func (m *AMQPMessenger) createNewChannel() error {
+	c, err := m.connection.Channel()
+	if err != nil {
+		return err
+	}
+	confirmsChan := make(chan amqp.Confirmation, 1)
+	if err := c.Confirm(false); err != nil {
+		close(confirmsChan)
+		log.Fatalf("Channel could not be put into confirm mode: %s\n", err)
+	}
+	log.Debugln("recconected to new channel")
+	m.channel = c
+	m.confirmsChan = c.NotifyPublish(confirmsChan)
+
+	return nil
 }
