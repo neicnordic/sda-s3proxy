@@ -159,8 +159,7 @@ services:
       - "/bin/sh"
       - "-c"
       - "cd /app; echo 'Running go ${GOLANG_VERSION:-1.19} tests';
-         go install 2>/dev/null
-         && go test ./... -v -coverprofile=coverage.txt -covermode=atomic"
+         go test ./... -v -coverprofile=coverage.txt -covermode=atomic"
     depends_on:
       mq:
         condition: service_healthy
