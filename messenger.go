@@ -150,9 +150,10 @@ func (m *AMQPMessenger) createNewChannel() error {
 	confirmsChan := make(chan amqp.Confirmation, 1)
 	if err := c.Confirm(false); err != nil {
 		close(confirmsChan)
-		log.Fatalf("Channel could not be put into confirm mode: %s\n", err)
+
+		return fmt.Errorf("channel could not be put into confirm mode: %v", err)
 	}
-	log.Debugln("recconected to new channel")
+	log.Debugln("reconnected to new channel")
 	m.channel = c
 	m.confirmsChan = c.NotifyPublish(confirmsChan)
 
