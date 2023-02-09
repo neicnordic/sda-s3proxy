@@ -28,6 +28,7 @@ type Event struct {
 // Messenger is an interface for sending messages for different file events
 type Messenger interface {
 	SendMessage(string, []byte) error
+	IsConnClosed() bool
 }
 
 // AMQPMessenger is a Messenger that sends messages to a local AMQP broker
@@ -156,4 +157,8 @@ func (m *AMQPMessenger) createNewChannel() error {
 	m.confirmsChan = c.NotifyPublish(confirmsChan)
 
 	return nil
+}
+
+func (m *AMQPMessenger) IsConnClosed() bool {
+	return m.connection.IsClosed()
 }

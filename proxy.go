@@ -139,15 +139,28 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err = p.messenger.SendMessage(p.fileIds[r.URL.Path], jsonMessage); err != nil {
-			log.Debug("error when sending message")
-			log.Error(err)
-		}
+		switch p.messenger.IsConnClosed() {
+		case true:
+			log.Errorln("connection is closed")
+			w.WriteHeader(http.StatusServiceUnavailable)
 
-		log.Debugf("marking file %v as 'uploaded' in database", p.fileIds[r.URL.Path])
-		err = p.database.MarkFileAsUploaded(p.fileIds[r.URL.Path], username, string(jsonMessage))
-		if err != nil {
-			log.Error(err)
+			tlsBroker, _ := TLSConfigBroker(Conf)
+			m, err := NewAMQPMessenger(Conf.Broker, tlsBroker)
+			if err == nil {
+				p.messenger = m
+			}
+
+		case false:
+			if err = p.messenger.SendMessage(p.fileIds[r.URL.Path], jsonMessage); err != nil {
+				log.Debug("error when sending message")
+				log.Error(err)
+			}
+
+			log.Debugf("marking file %v as 'uploaded' in database", p.fileIds[r.URL.Path])
+			err = p.database.MarkFileAsUploaded(p.fileIds[r.URL.Path], username, string(jsonMessage))
+			if err != nil {
+				log.Error(err)
+			}
 		}
 
 		delete(p.fileIds, r.URL.Path)
