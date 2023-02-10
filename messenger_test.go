@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,8 +30,9 @@ func TestNewAMQPMessenger(t *testing.T) {
 	}
 	assert.NotNil(t, tlsConfig)
 	assert.NoError(t, err)
-
-	assert.NotPanics(t, func() { NewAMQPMessenger(config.Broker, tlsConfig) })
+	m, err := NewAMQPMessenger(config.Broker, tlsConfig)
+	assert.NoError(t, err)
+	assert.NotNil(t, m)
 }
 
 func TestSendMessage(t *testing.T) {
@@ -47,15 +50,54 @@ func TestSendMessage(t *testing.T) {
 	assert.NotNil(t, tlsConfig)
 	assert.NoError(t, err)
 
-	messenger := NewAMQPMessenger(config.Broker, tlsConfig)
-
+	messenger, err := NewAMQPMessenger(config.Broker, tlsConfig)
+	assert.NoError(t, err)
 	event := Event{}
 	checksum := Checksum{}
+	event.Operation = "TestSendMessage"
 	event.Username = "Dummy"
 	checksum.Type = "md5"
 	checksum.Value = "123456789"
 	event.Checksum = []interface{}{checksum}
 
-	err = messenger.SendMessage(event)
+	jsonMessage, err := json.Marshal(event)
+	assert.NoError(t, err)
+	uuid, _ := uuid.NewRandom()
+	t.Log("uuid: ", uuid)
+	err = messenger.SendMessage(uuid.String(), jsonMessage)
+	assert.NoError(t, err)
+}
+
+func TestCreateNewChannel(t *testing.T) {
+	viper.Reset()
+	viper.Set("server.confFile", "dev_utils/config.yaml")
+
+	config, err := NewConfig()
+	assert.NotNil(t, config)
+	assert.NoError(t, err)
+	tlsConfig, err := TLSConfigBroker(config)
+	if err != nil {
+		t.Log(err)
+		t.Skip("skip test since certificates are not present")
+	}
+	assert.NotNil(t, tlsConfig)
+	assert.NoError(t, err)
+
+	messenger, err := NewAMQPMessenger(config.Broker, tlsConfig)
+	messenger.channel.Close()
+	assert.NoError(t, err)
+	event := Event{}
+	checksum := Checksum{}
+	event.Operation = "TestRecreateChannel"
+	event.Username = "Dummy"
+	checksum.Type = "md5"
+	checksum.Value = "123456789"
+	event.Checksum = []interface{}{checksum}
+
+	jsonMessage, err := json.Marshal(event)
+	assert.NoError(t, err)
+	uuid, _ := uuid.NewRandom()
+	t.Log("uuid: ", uuid)
+	err = messenger.SendMessage(uuid.String(), jsonMessage)
 	assert.NoError(t, err)
 }

@@ -131,7 +131,7 @@ services:
 
   database:
     container_name: db
-    image: neicnordic/sda-db:v2.0.7
+    image: ghcr.io/neicnordic/sda-db:v2.0.11
     depends_on:
       certfixer:
         condition: service_completed_successfully
@@ -159,8 +159,7 @@ services:
       - "/bin/sh"
       - "-c"
       - "cd /app; echo 'Running go ${GOLANG_VERSION:-1.19} tests';
-         go install 2>/dev/null
-         && go test ./... -v -coverprofile=coverage.txt -covermode=atomic"
+         go test ./... -v -coverprofile=coverage.txt -covermode=atomic"
     depends_on:
       mq:
         condition: service_healthy

@@ -1,13 +1,13 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
+	"time"
 
-	"github.com/google/uuid"
+	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
-	"github.com/streadway/amqp"
 )
 
 // Checksum used in the message
@@ -27,7 +27,8 @@ type Event struct {
 
 // Messenger is an interface for sending messages for different file events
 type Messenger interface {
-	SendMessage(message Event) error
+	SendMessage(string, []byte) error
+	IsConnClosed() bool
 }
 
 // AMQPMessenger is a Messenger that sends messages to a local AMQP broker
@@ -39,9 +40,8 @@ type AMQPMessenger struct {
 	confirmsChan <-chan amqp.Confirmation
 }
 
-// NewAMQPMessenger creates a new messenger that can communicate with a backend
-// amqp server.
-func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
+// NewAMQPMessenger creates a new messenger that can communicate with a backend amqp server.
+func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) (*AMQPMessenger, error) {
 	brokerURI := buildMqURI(c.host, c.port, c.user, c.password, c.vhost, c.ssl)
 
 	var connection *amqp.Connection
@@ -55,12 +55,12 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
 		connection, err = amqp.Dial(brokerURI)
 	}
 	if err != nil {
-		log.Panicf("brokerErrMsg 1: %s", err)
+		return nil, fmt.Errorf("brokerErrMsg 1: %s", err)
 	}
 
 	channel, err = connection.Channel()
 	if err != nil {
-		log.Panicf("brokerErrMsg 2: %s", err)
+		return nil, fmt.Errorf("brokerErrMsg 2: %s", err)
 	}
 
 	log.Debug("enabling publishing confirms.")
@@ -86,20 +86,22 @@ func NewAMQPMessenger(c BrokerConfig, tlsConfig *tls.Config) *AMQPMessenger {
 		log.Fatalf("Channel could not be put into confirm mode: %s\n", err)
 	}
 
-	return &AMQPMessenger{connection, channel, c.exchange, c.routingKey, channel.NotifyPublish(confirmsChan)}
+	return &AMQPMessenger{connection, channel, c.exchange, c.routingKey, channel.NotifyPublish(confirmsChan)}, err
 }
 
 // SendMessage sends message to RabbitMQ if the upload is finished
-func (m *AMQPMessenger) SendMessage(message Event) error {
-
-	body, e := json.Marshal(message)
-	if e != nil {
-		log.Fatalf("%s", e)
+func (m *AMQPMessenger) SendMessage(corrID string, body []byte) error {
+	if m.channel.IsClosed() {
+		log.Debugln("channel closed, reconnecting")
+		if err := m.createNewChannel(); err != nil {
+			return fmt.Errorf("failed to recreate channel: %v", err)
+		}
 	}
 
-	corrID, _ := uuid.NewRandom()
-
-	err := m.channel.Publish(
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	err := m.channel.PublishWithContext(
+		ctx,
 		m.exchange,
 		m.routingKey,
 		false, // mandatory
@@ -109,20 +111,20 @@ func (m *AMQPMessenger) SendMessage(message Event) error {
 			ContentEncoding: "UTF-8",
 			ContentType:     "application/json",
 			DeliveryMode:    amqp.Persistent,
-			CorrelationId:   corrID.String(),
+			CorrelationId:   corrID,
 			Priority:        0, // 0-9
-			Body:            []byte(body),
+			Body:            body,
 		},
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send message because: %v", err)
 	}
 
 	confirmed := <-m.confirmsChan
 	if !confirmed.Ack {
 		return fmt.Errorf("failed delivery of delivery tag: %d", confirmed.DeliveryTag)
 	}
-	log.Debugf("Delivered message: %v, with correlation-ID: %v", string(body), corrID.String())
+	log.Debugf("Delivered message: %v, with correlation-ID: %v", string(body), corrID)
 
 	return nil
 
@@ -138,4 +140,26 @@ func buildMqURI(mqHost, mqPort, mqUser, mqPassword, mqVhost string, ssl bool) st
 	}
 
 	return brokerURI
+}
+
+func (m *AMQPMessenger) createNewChannel() error {
+	c, err := m.connection.Channel()
+	if err != nil {
+		return err
+	}
+	confirmsChan := make(chan amqp.Confirmation, 1)
+	if err := c.Confirm(false); err != nil {
+		close(confirmsChan)
+
+		return fmt.Errorf("channel could not be put into confirm mode: %v", err)
+	}
+	log.Debugln("reconnected to new channel")
+	m.channel = c
+	m.confirmsChan = c.NotifyPublish(confirmsChan)
+
+	return nil
+}
+
+func (m *AMQPMessenger) IsConnClosed() bool {
+	return m.connection.IsClosed()
 }
