@@ -1,6 +1,10 @@
 name: build PR container
 on:
   pull_request:
+    paths:
+      - '*.go'
+      - './Dockerfile'
+
 jobs:
   build:
     name: Build PR image
