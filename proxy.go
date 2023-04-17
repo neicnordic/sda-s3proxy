@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NBISweden/S3-Upload-Proxy/helper"
 	common "github.com/neicnordic/sda-common/database"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -87,6 +88,12 @@ func (p *Proxy) notAllowedResponse(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(403)
 }
 
+func (p *Proxy) notAcceptableResponse(w http.ResponseWriter, _ *http.Request) {
+	log.Debug("not acceptable response")
+	// http.Error(w, "request not acceptable", 406)
+	w.WriteHeader(406)
+}
+
 func (p *Proxy) notAuthorized(w http.ResponseWriter, _ *http.Request) {
 	log.Debug("not authorized")
 	w.WriteHeader(401) // Actually correct!
@@ -105,7 +112,16 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	p.prependBucketToHostPath(r)
 
 	username := fmt.Sprintf("%v", claims["sub"])
-	filepath := strings.Replace(r.URL.Path, "/"+p.s3.bucket+"/", "", 1)
+	rawFilepath := strings.Replace(r.URL.Path, "/"+p.s3.bucket+"/", "", 1)
+
+	filepath, err := helper.FormatUploadFilePath(rawFilepath)
+	if err != nil {
+		log.Debugf(err.Error())
+		p.notAcceptableResponse(w, r)
+
+		return
+	}
+
 	// register file in database if it's the start of an upload
 	if p.detectRequestType(r) == Put && p.fileIds[r.URL.Path] == "" {
 		log.Debugf("registering file %v in the database", r.URL.Path)
