@@ -2,6 +2,8 @@ package helper
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -69,4 +71,40 @@ func TestCreateECToken(t *testing.T) {
 	assert.Nil(t, err)
 
 	defer os.RemoveAll("dummy-folder")
+}
+
+func TestFormatUploadFilePath(t *testing.T) {
+
+	// This is non-trivial only on windows
+	unixPath := "a/b/c.c4gh"
+	testPath := filepath.Join("a", "b", "c.c4gh")
+	uploadPath, err := FormatUploadFilePath(testPath)
+	assert.NoError(t, err)
+	assert.Equal(t, unixPath, uploadPath)
+
+	testPath = "a\\b\\c.c4gh"
+	uploadPath, err = FormatUploadFilePath(testPath)
+	if runtime.GOOS == "windows" {
+		// this is expected to work on windows
+		assert.Equal(t, unixPath, uploadPath)
+		assert.NoError(t, err)
+	} else {
+		// this is expected to fail on linux/mac
+		assert.ErrorContains(t, err, "filepath contains disallowed characters: \\, \\")
+
+	}
+
+	// mixed "\" and "/"
+	weirdPath := `dq\sw:*?"<>|\t\s/df.c4gh`
+	_, err = FormatUploadFilePath(weirdPath)
+	assert.EqualError(t, err, "filepath contains mixed '\\' and '/' characters")
+
+	// no mixed "\" and "/" but not allowed
+	weirdPath = `dq\sw:*?"<>|\t\sdf.c4gh`
+	_, err = FormatUploadFilePath(weirdPath)
+	if runtime.GOOS == "windows" {
+		assert.EqualError(t, err, "filepath contains disallowed characters: :, *, ?, \", <, >, |")
+	} else {
+		assert.EqualError(t, err, "filepath contains disallowed characters: \\, :, *, ?, \", <, >, |, \\, \\")
+	}
 }
