@@ -409,7 +409,6 @@ func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 
 		return "", 0, err
 	}
-	fmt.Println(strings.ReplaceAll(*result.Contents[0].ETag, "\"", ""))
 
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(strings.ReplaceAll(*result.Contents[0].ETag, "\"", "")))), *result.Contents[0].Size, nil
 
