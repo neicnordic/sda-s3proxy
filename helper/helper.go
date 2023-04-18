@@ -372,13 +372,13 @@ func TLScertToFile(filename string, derBytes []byte) error {
 func FormatUploadFilePath(filePath string) (string, error) {
 
 	// Check for mixed "\" and "/" in filepath. Stop and throw an error if true so that
-	// we do not end up with unintended folder structure when applying ToSlash later on
+	// we do not end up with unintended folder structure when applying ReplaceAll below
 	if strings.Contains(filePath, "\\") && strings.Contains(filePath, "/") {
 		return filePath, fmt.Errorf("filepath contains mixed '\\' and '/' characters")
 	}
 
-	// make path separators os compatible
-	outPath := filepath.ToSlash(filePath)
+	// make any windows path separators linux compatible
+	outPath := strings.ReplaceAll(filePath, "\\", "/")
 
 	// [\x00-\x1F\x7F] is the control character set
 	re := regexp.MustCompile(`[\\:\*\?"<>\|\x00-\x1F\x7F]`)
