@@ -90,7 +90,6 @@ func (p *Proxy) notAllowedResponse(w http.ResponseWriter, _ *http.Request) {
 
 func (p *Proxy) notAcceptableResponse(w http.ResponseWriter, _ *http.Request) {
 	log.Debug("not acceptable response")
-	// http.Error(w, "request not acceptable", 406)
 	w.WriteHeader(406)
 }
 
