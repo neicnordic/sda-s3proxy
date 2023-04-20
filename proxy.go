@@ -78,24 +78,23 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Proxy) internalServerError(w http.ResponseWriter, r *http.Request) {
-	log.Debug("internal server error")
 	log.Debugf("Internal server error for request (%v)", r)
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 }
 
 func (p *Proxy) notAllowedResponse(w http.ResponseWriter, _ *http.Request) {
 	log.Debug("not allowed response")
-	w.WriteHeader(403)
+	w.WriteHeader(http.StatusForbidden)
 }
 
 func (p *Proxy) notAcceptableResponse(w http.ResponseWriter, _ *http.Request) {
 	log.Debug("not acceptable response")
-	w.WriteHeader(406)
+	w.WriteHeader(http.StatusNotAcceptable)
 }
 
 func (p *Proxy) notAuthorized(w http.ResponseWriter, _ *http.Request) {
 	log.Debug("not authorized")
-	w.WriteHeader(401) // Actually correct!
+	w.WriteHeader(http.StatusUnauthorized)
 }
 
 func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
