@@ -87,11 +87,6 @@ func (p *Proxy) notAllowedResponse(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusForbidden)
 }
 
-func (p *Proxy) notAcceptableResponse(w http.ResponseWriter, _ *http.Request) {
-	log.Debug("not acceptable response")
-	w.WriteHeader(http.StatusNotAcceptable)
-}
-
 func (p *Proxy) notAuthorized(w http.ResponseWriter, _ *http.Request) {
 	log.Debug("not authorized")
 	w.WriteHeader(http.StatusUnauthorized)
@@ -115,7 +110,7 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	filepath, err := helper.FormatUploadFilePath(rawFilepath)
 	if err != nil {
 		log.Debugf(err.Error())
-		p.notAcceptableResponse(w, r)
+		w.WriteHeader(http.StatusNotAcceptable)
 
 		return
 	}
