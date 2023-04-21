@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NBISweden/S3-Upload-Proxy/helper"
 	common "github.com/neicnordic/sda-common/database"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -77,19 +78,18 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Proxy) internalServerError(w http.ResponseWriter, r *http.Request) {
-	log.Debug("internal server error")
 	log.Debugf("Internal server error for request (%v)", r)
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 }
 
 func (p *Proxy) notAllowedResponse(w http.ResponseWriter, _ *http.Request) {
 	log.Debug("not allowed response")
-	w.WriteHeader(403)
+	w.WriteHeader(http.StatusForbidden)
 }
 
 func (p *Proxy) notAuthorized(w http.ResponseWriter, _ *http.Request) {
 	log.Debug("not authorized")
-	w.WriteHeader(401) // Actually correct!
+	w.WriteHeader(http.StatusUnauthorized)
 }
 
 func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +105,16 @@ func (p *Proxy) allowedResponse(w http.ResponseWriter, r *http.Request) {
 	p.prependBucketToHostPath(r)
 
 	username := fmt.Sprintf("%v", claims["sub"])
-	filepath := strings.Replace(r.URL.Path, "/"+p.s3.bucket+"/", "", 1)
+	rawFilepath := strings.Replace(r.URL.Path, "/"+p.s3.bucket+"/", "", 1)
+
+	filepath, err := helper.FormatUploadFilePath(rawFilepath)
+	if err != nil {
+		log.Debugf(err.Error())
+		w.WriteHeader(http.StatusNotAcceptable)
+
+		return
+	}
+
 	// register file in database if it's the start of an upload
 	if p.detectRequestType(r) == Put && p.fileIds[r.URL.Path] == "" {
 		log.Debugf("registering file %v in the database", r.URL.Path)
@@ -409,7 +418,6 @@ func (p *Proxy) requestInfo(fullPath string) (string, int64, error) {
 
 		return "", 0, err
 	}
-	fmt.Println(strings.ReplaceAll(*result.Contents[0].ETag, "\"", ""))
 
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(strings.ReplaceAll(*result.Contents[0].ETag, "\"", "")))), *result.Contents[0].Size, nil
 
