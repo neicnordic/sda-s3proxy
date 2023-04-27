@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -250,8 +250,12 @@ func (p *Proxy) prependBucketToHostPath(r *http.Request) {
 	bucket := p.s3.bucket
 
 	// Extract username for request's url path
-	re := regexp.MustCompile("/([^/]+)/")
-	username := re.FindStringSubmatch(r.URL.Path)[1]
+	str, err := url.ParseRequestURI(r.URL.Path)
+	if err != nil || str.Path == "" {
+		log.Errorf("failed to get path from query (%v)", r.URL.Path)
+	}
+	path := strings.Split(str.Path, "/")
+	username := path[1]
 
 	log.Debugf("incoming path: %s", r.URL.Path)
 	log.Debugf("incoming raw: %s", r.URL.RawQuery)
