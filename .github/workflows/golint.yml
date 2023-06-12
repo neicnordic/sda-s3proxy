@@ -16,6 +16,6 @@ jobs:
         go-version: ${{ matrix.go-version }}
     - uses: actions/checkout@master
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v3.5.0
+      uses: golangci/golangci-lint-action@v3.6.0
       with:
         args: -E bodyclose,gocritic,gofmt,gosec,govet,nestif,nlreturn,revive -e G107
